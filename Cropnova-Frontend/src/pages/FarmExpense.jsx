@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wallet, TrendingUp, TrendingDown, Plus, Calculator, Trash2, Sparkles, CheckCircle2 } from 'lucide-react';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { api } from '../utils/api';
 
 // Per-acre estimated input costs by crop (₹)
 const CROP_COST_ESTIMATES = {
@@ -33,9 +33,22 @@ const getCropKey = (name) => {
 
 export const FarmExpense = () => {
   // Clean state – no pre-existing sample data
-  const [records, setRecords] = usePersistedState('expenses', []);
+  const [records, setRecords] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showEstimator, setShowEstimator] = useState(false);
+
+  useEffect(() => {
+    loadExpenses();
+  }, []);
+
+  const loadExpenses = async () => {
+    try {
+      const data = await api.get('/expenses');
+      setRecords(data);
+    } catch (err) {
+      console.error('Failed to load expenses', err);
+    }
+  };
 
   // Farm input estimator form
   const [estimatorForm, setEstimatorForm] = useState({
@@ -57,18 +70,28 @@ export const FarmExpense = () => {
   const totalExpense = records.filter(r => r.type === 'Expense').reduce((a, r) => a + Number(r.amount), 0);
   const netProfit    = totalIncome - totalExpense;
 
-  const handleAddTransaction = (e) => {
+  const handleAddTransaction = async (e) => {
     e.preventDefault();
-    setRecords([{
-      id: Date.now(), type, category,
-      amount: Number(amount), date,
-      notes: notes || `${type} — ${category}`
-    }, ...records]);
-    setShowModal(false);
-    setAmount(''); setNotes('');
+    try {
+      await api.post('/expenses', {
+        type, category, amount: Number(amount), transactionDate: date, notes
+      });
+      await loadExpenses();
+      setShowModal(false);
+      setAmount(''); setNotes('');
+    } catch (err) {
+      console.error('Failed to add transaction', err);
+    }
   };
 
-  const handleDeleteRecord = (id) => setRecords(records.filter(r => r.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/expenses/${id}`);
+      setRecords(records.filter(r => r.id !== id));
+    } catch (err) {
+      console.error('Failed to delete transaction', err);
+    }
+  };
 
   const handleGenerateEstimate = (e) => {
     e.preventDefault();
@@ -171,7 +194,7 @@ export const FarmExpense = () => {
                     {rec.type === 'Income' ? '+' : '-'}₹{Number(rec.amount).toLocaleString()}
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    <button onClick={() => handleDeleteRecord(rec.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                    <button onClick={() => handleDelete(rec.id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
                       <Trash2 size={15} />
                     </button>
                   </td>

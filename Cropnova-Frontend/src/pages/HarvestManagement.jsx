@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wheat, Warehouse, Calendar, CheckCircle2, TrendingUp, Plus, Trash2 } from 'lucide-react';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { api } from '../utils/api';
 
 export const HarvestManagement = () => {
-  const [harvests, setHarvests] = usePersistedState('harvests', []);
+  const [harvests, setHarvests] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newHarvest, setNewHarvest] = useState({
     crop: '', yieldQuintals: '', acreArea: '', storageLocation: '', status: 'Stored', date: new Date().toISOString().split('T')[0]
   });
 
+  useEffect(() => {
+    // For now we don't have a specific harvests table in PG, we just use crops status='Harvested'.
+    // Or we could mock it using API. Since we don't have the table, we'll keep it simple:
+    api.get('/crops').then(data => {
+      const harvested = data.filter(c => c.status === 'Harvested').map(c => ({
+        id: c.id, crop: c.crop_name, yieldQuintals: 15, acreArea: 1, storageLocation: 'Warehouse', status: 'Stored', date: c.expected_harvest_date ? c.expected_harvest_date.split('T')[0] : '2026-08-20'
+      }));
+      setHarvests(harvested);
+    }).catch(e => console.error(e));
+  }, []);
+
   const handleAdd = (e) => {
     e.preventDefault();
+    // Since we don't have a dedicated harvest table in schema, we mock add in UI for demo
     setHarvests(prev => [{ id: Date.now(), ...newHarvest }, ...prev]);
     setShowModal(false);
     setNewHarvest({ crop: '', yieldQuintals: '', acreArea: '', storageLocation: '', status: 'Stored', date: new Date().toISOString().split('T')[0] });

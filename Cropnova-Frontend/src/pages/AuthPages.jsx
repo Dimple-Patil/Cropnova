@@ -18,13 +18,17 @@ export const AuthPages = () => {
   const [otpInput, setOtpInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleAuthSubmit = (e) => {
+  const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
     if (isLoginMode) {
-      login(email, password);
-      navigate('/');
+      const success = await login(email, password);
+      if (success) {
+        navigate('/');
+      } else {
+        setErrorMsg('Invalid login credentials or server connection failed.');
+      }
     } else {
       // Validate phone number for non-admin roles
       if (role !== 'admin' && (!phone || phone.length < 10)) {
@@ -32,11 +36,15 @@ export const AuthPages = () => {
         return;
       }
 
-      const res = registerUser({ name, email, password, phone, role });
-      if (res.requiresOtp) {
-        setStep('otp');
+      const res = await registerUser({ name, email, password, phone, role });
+      if (res && res.success) {
+        if (res.requiresOtp) {
+          setStep('otp');
+        } else {
+          navigate('/');
+        }
       } else {
-        navigate('/');
+        setErrorMsg(res?.error || 'Registration failed. Check if user already exists or server is running.');
       }
     }
   };

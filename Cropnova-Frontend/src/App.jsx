@@ -45,10 +45,8 @@ export function App() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
-      <div style={{ display: 'flex', flex: 1 }}>
-        <Sidebar />
-        <main style={{ flex: 1, padding: '2rem', maxWidth: '1400px' }}>
-          <Routes>
+      <div style={{ flex: 1, padding: '2rem', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+        <Routes>
             {/* Public Auth & Guest Landing Home Page */}
             <Route path="/" element={!user ? <LandingHomePage /> : user.role === 'admin' ? <AdminPanel /> : <FarmerDashboard />} />
             <Route path="/login" element={<AuthPages />} />
@@ -68,7 +66,6 @@ export function App() {
             <Route path="/reports" element={<ProtectedRoute allowedRoles={['farmer']}><ReportsAnalytics /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
           </Routes>
-        </main>
       </div>
 
       {/* Floating AI Assistant Chatbot with Disease Photo Scanner */}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MapPin, Sun, CloudSun, CloudRain, Droplets, Wind, Plus, Trash2, TestTube2, User, Save, Edit3 } from 'lucide-react';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { api } from '../utils/api';
 
 export const FarmerDashboard = () => {
   const { user, updateUserProfile } = useAuth();
@@ -18,9 +19,22 @@ export const FarmerDashboard = () => {
   });
   const [isEditingProfile, setIsEditingProfile] = useState(!profile?.district);
 
-  // 2. Farm plots — persisted per user
-  const [farms, setFarms] = usePersistedState('farm_plots', []);
+  // 2. Farm plots — hit API
+  const [farms, setFarms] = useState([]);
   const [showAddFarmModal, setShowAddFarmModal] = useState(false);
+
+  useEffect(() => {
+    loadFarms();
+  }, []);
+
+  const loadFarms = async () => {
+    try {
+      const data = await api.get('/farms');
+      setFarms(data);
+    } catch (err) {
+      console.error('Failed to load farms', err);
+    }
+  };
 
   // 3. Weather telemetry state
   const [weather, setWeather] = useState(null);
@@ -68,27 +82,31 @@ export const FarmerDashboard = () => {
     }
   };
 
-  const handleAddFarm = (e) => {
+  const handleAddFarm = async (e) => {
     e.preventDefault();
-    const createdFarm = {
-      id: Date.now(),
-      name: farmName,
-      size: Number(plotSize),
-      soilType,
-      phLevel: phLevel || '6.8',
-      organicCarbon: organicCarbon || '0.50%',
-      irrigationSource
-    };
-    setFarms([...farms, createdFarm]);
-    setShowAddFarmModal(false);
-    setFarmName('');
-    setPlotSize('');
-    setPhLevel('');
-    setOrganicCarbon('');
+    try {
+      await api.post('/farms', {
+        name: farmName,
+        sizeAcres: Number(plotSize),
+        soilType,
+        location: profile.village || 'Farm Location',
+        irrigationSource
+      });
+      await loadFarms();
+      setShowAddFarmModal(false);
+      setFarmName(''); setPlotSize(''); setPhLevel(''); setOrganicCarbon('');
+    } catch (err) {
+      console.error('Failed to add farm', err);
+    }
   };
 
-  const handleDeleteFarm = (id) => {
-    setFarms(farms.filter(f => f.id !== id));
+  const handleDeleteFarm = async (id) => {
+    try {
+      await api.delete(`/farms/${id}`);
+      setFarms(farms.filter(f => f.id !== id));
+    } catch (err) {
+      console.error('Failed to delete farm', err);
+    }
   };
 
   return (

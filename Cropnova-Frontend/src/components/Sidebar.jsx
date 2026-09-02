@@ -65,15 +65,12 @@ export const Sidebar = () => {
     { title: 'Harvest Management', path: '/harvest', icon: Wheat, roles: ['farmer'] },
 
     // Vendor-specific routes
-    { title: 'Agri Marketplace', path: '/marketplace', icon: ShoppingCart, roles: ['farmer', 'vendor'] },
     { title: 'Vendor Inventory & Sales', path: '/vendor', icon: ShoppingCart, roles: ['vendor'] },
 
     // Shared routes
-    { title: 'Expert Consultation Board', path: '/expert', icon: MessageSquare, roles: ['farmer', 'expert'] },
     { title: 'Government Schemes', path: '/schemes', icon: Building2, roles: ['farmer', 'expert'] },
     { title: 'News & Agri Updates', path: '/news', icon: Newspaper, roles: ['farmer', 'expert', 'vendor'] },
-    { title: 'Alerts & Reminders', path: '/notifications', icon: ShieldAlert, roles: ['farmer', 'expert', 'vendor'] },
-    { title: 'Reports & Analytics', path: '/reports', icon: BarChart3, roles: ['farmer'] }
+    { title: 'Alerts & Reminders', path: '/notifications', icon: ShieldAlert, roles: ['farmer', 'expert', 'vendor'] }
   ];
 
   const filteredItems = navItems.filter(item => item.roles.includes(user.role));

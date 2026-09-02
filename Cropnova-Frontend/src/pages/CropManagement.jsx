@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sprout, Plus, Calendar, MapPin, Trash2, Droplet, Zap, CheckCircle2, AlertCircle, Wallet } from 'lucide-react';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { api } from '../utils/api';
 
 // --- Per-acre cost & income estimates by crop ---
 const CROP_COSTS = {
@@ -103,7 +103,7 @@ const getIrrigationPlan = ({ cropName, irrigationSource, currentMethod, acreage 
 
 // =====================================================================
 export const CropManagement = () => {
-  const [crops, setCrops]               = usePersistedState('crops', []);
+  const [crops, setCrops]               = useState([]);
   const [showModal, setShowModal]       = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [newCrop, setNewCrop]           = useState({
@@ -112,19 +112,64 @@ export const CropManagement = () => {
     currentMethod: '', soilType: '', budget: ''
   });
 
-  const handleAddCrop = (e) => {
-    e.preventDefault();
-    const irrigationPlan = getIrrigationPlan(newCrop);
-    const budgetCalc     = calcBudget(newCrop.cropName, newCrop.acreage, newCrop.budget);
-    const created = { id: Date.now(), ...newCrop, status: 'Active (Sown)', irrigationPlan, budgetCalc };
-    setCrops([...crops, created]);
-    setShowModal(false);
-    setNewCrop({ cropName: '', sowingDate: '', expectedHarvestDate: '', fieldSection: '', acreage: '', irrigationSource: '', currentMethod: '', soilType: '', budget: '' });
+  useEffect(() => {
+    loadCrops();
+  }, []);
+
+  const loadCrops = async () => {
+    try {
+      const data = await api.get('/crops');
+      // Calculate missing AI derivations (budget/irrigation) that aren't stored in basic DB row
+      const enhancedData = data.map(crop => ({
+        ...crop,
+        irrigationPlan: getIrrigationPlan({ cropName: crop.crop_name, irrigationSource: crop.irrigation_source || 'Rainfed', currentMethod: 'Flood / Traditional' }),
+        budgetCalc: calcBudget(crop.crop_name, crop.acreage || 1, crop.budget || 0),
+        cropName: crop.crop_name, // Map DB snake_case to frontend camelCase
+        fieldSection: crop.field_section,
+        sowingDate: crop.sowing_date ? crop.sowing_date.split('T')[0] : '',
+        expectedHarvestDate: crop.expected_harvest_date ? crop.expected_harvest_date.split('T')[0] : ''
+      }));
+      setCrops(enhancedData);
+    } catch (err) {
+      console.error('Failed to load crops', err);
+    }
   };
 
-  const handleDeleteCrop = (id) => {
-    setCrops(crops.filter(c => c.id !== id));
-    if (selectedCrop?.id === id) setSelectedCrop(null);
+  const handleAddCrop = async (e) => {
+    e.preventDefault();
+    try {
+      // Create crop in DB (requires a farmId, for now we can just grab the first farm if available, or pass null)
+      // We will need farms to be loaded to attach a crop properly.
+      const farmsRes = await api.get('/farms').catch(() => []);
+      const defaultFarmId = farmsRes.length > 0 ? farmsRes[0].id : null;
+
+      const createdDbCrop = await api.post('/crops', {
+        farmId: defaultFarmId,
+        cropName: newCrop.cropName,
+        variety: 'Standard',
+        sowingDate: newCrop.sowingDate,
+        expectedHarvestDate: newCrop.expectedHarvestDate,
+        status: 'Active (Sown)',
+        fieldSection: newCrop.fieldSection
+      });
+      
+      await loadCrops();
+      setShowModal(false);
+      setNewCrop({ cropName: '', sowingDate: '', expectedHarvestDate: '', fieldSection: '', acreage: '', irrigationSource: '', currentMethod: '', soilType: '', budget: '' });
+    } catch (err) {
+      console.error('Failed to add crop', err);
+      alert('Error adding crop. Ensure you have added a Farm in the Dashboard first.');
+    }
+  };
+
+  const handleDeleteCrop = async (id) => {
+    try {
+      await api.delete(`/crops/${id}`);
+      setCrops(crops.filter(c => c.id !== id));
+      if (selectedCrop?.id === id) setSelectedCrop(null);
+    } catch (err) {
+      console.error('Failed to delete crop', err);
+    }
   };
 
   const set = (key, val) => setNewCrop(prev => ({ ...prev, [key]: val }));
