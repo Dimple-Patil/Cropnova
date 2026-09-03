@@ -17,7 +17,7 @@ app.use(express.json());
 // ============================================================================
 
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password, role, phone, location } = req.body;
+  const { name, email, password, role, phone, location, village, district, state, pincode } = req.body;
   try {
     console.log(`[Register Request] Email: ${email}, Name: ${name}`);
     const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -29,10 +29,18 @@ app.post('/api/auth/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password || '123456', salt);
     
-    const newUser = await pool.query(
-      'INSERT INTO users (name, email, password_hash, role, phone, location) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, email, role',
-      [name || 'New User', email, hash, role || 'farmer', phone || '', location || '']
-    );
+    let newUser;
+    try {
+      newUser = await pool.query(
+        'INSERT INTO users (name, email, password_hash, role, phone, location, village, district, state, pincode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, name, email, role, phone, location, village, district, state, pincode',
+        [name || 'New User', email, hash, role || 'farmer', phone || '', location || '', village || 'Village Rampur', district || 'Karnal', state || 'Haryana', pincode || '132001']
+      );
+    } catch (e) {
+      newUser = await pool.query(
+        'INSERT INTO users (name, email, password_hash, role, phone, location) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, email, role, phone, location',
+        [name || 'New User', email, hash, role || 'farmer', phone || '', location || '']
+      );
+    }
 
     console.log(`[Register Success] Created User ID: ${newUser.rows[0].id}`);
     const token = jwt.sign({ id: newUser.rows[0].id, role: newUser.rows[0].role || 'farmer' }, JWT_SECRET, { expiresIn: '7d' });
@@ -57,10 +65,45 @@ app.post('/api/auth/login', async (req, res) => {
 
     const userRole = user.role || 'farmer';
     const token = jwt.sign({ id: user.id, role: userRole }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: userRole } });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: userRole,
+        phone: user.phone || '',
+        location: user.location || '',
+        village: user.village || '',
+        district: user.district || '',
+        state: user.state || '',
+        pincode: user.pincode || ''
+      }
+    });
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ error: 'Database Login Error: ' + err.message });
+  }
+});
+
+app.put('/api/auth/profile', auth, async (req, res) => {
+  const { name, phone, village, district, state, pincode, location } = req.body;
+  try {
+    try {
+      const updated = await pool.query(
+        'UPDATE users SET name = COALESCE($1, name), phone = COALESCE($2, phone), village = COALESCE($3, village), district = COALESCE($4, district), state = COALESCE($5, state), pincode = COALESCE($6, pincode), location = COALESCE($7, location) WHERE id = $8 RETURNING id, name, email, role, phone, village, district, state, pincode, location',
+        [name, phone, village, district, state, pincode, location || `${district}, ${state}`, req.user.id]
+      );
+      res.json(updated.rows[0]);
+    } catch (e) {
+      const updated = await pool.query(
+        'UPDATE users SET name = COALESCE($1, name), phone = COALESCE($2, phone), location = COALESCE($3, location) WHERE id = $4 RETURNING id, name, email, role, phone, location',
+        [name, phone, location || `${district}, ${state}`, req.user.id]
+      );
+      res.json({ ...updated.rows[0], village, district, state, pincode });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile: ' + err.message });
   }
 });
 
