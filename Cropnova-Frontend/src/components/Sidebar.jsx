@@ -69,7 +69,6 @@ export const Sidebar = () => {
 
     // Shared routes
     { title: 'Government Schemes', path: '/schemes', icon: Building2, roles: ['farmer', 'expert'] },
-    { title: 'News & Agri Updates', path: '/news', icon: Newspaper, roles: ['farmer', 'expert', 'vendor'] },
     { title: 'Alerts & Reminders', path: '/notifications', icon: ShieldAlert, roles: ['farmer', 'expert', 'vendor'] }
   ];
 

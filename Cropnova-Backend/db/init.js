@@ -24,6 +24,9 @@ const run = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(100);
       
+      ALTER TABLE farms ADD COLUMN IF NOT EXISTS ph_level VARCHAR(20) DEFAULT '6.8';
+      ALTER TABLE farms ADD COLUMN IF NOT EXISTS organic_carbon VARCHAR(20) DEFAULT '0.55%';
+
       -- Remove NOT NULL constraints on legacy columns if they exist in pre-existing sakharam DB
       DO $$ 
       BEGIN 

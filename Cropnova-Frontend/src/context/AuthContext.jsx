@@ -39,7 +39,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserProfile = (updatedFields) => {
-    setUser(prev => prev ? { ...prev, ...updatedFields } : null);
+    setUser(prev => {
+      const updated = prev ? { ...prev, ...updatedFields } : updatedFields;
+      // Also sync to farmer_profile key for persistence compatibility
+      localStorage.setItem('farmer_profile', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const registerUser = async (userData) => {
