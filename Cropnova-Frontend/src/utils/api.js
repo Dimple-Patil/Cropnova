@@ -1,14 +1,13 @@
+let memoryToken = null;
+
+export const setApiToken = (token) => {
+  memoryToken = token;
+};
+
 const BASE_URL = 'http://localhost:5000/api';
 
 const getToken = () => {
-  try {
-    const session = localStorage.getItem('cropnova_session');
-    if (session) {
-      const data = JSON.parse(session);
-      return data.token;
-    }
-  } catch (e) {}
-  return null;
+  return memoryToken;
 };
 
 const request = async (endpoint, options = {}) => {

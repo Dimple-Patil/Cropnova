@@ -1,42 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Sprout, Sun, Moon, Bell, LogIn, LogOut,
   LayoutDashboard, TestTube2, DollarSign, Wallet, Wheat, Building2, UserCog, ShoppingCart,
-  User, MapPin, Save, X, CheckCircle2, ChevronDown, Edit3
+  User, MapPin, ChevronDown
 } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, updateUserProfile, theme, toggleTheme, logout } = useAuth();
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
-
-  // Local state for profile modal inputs
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name || '',
-    phone: user?.phone || '',
-    email: user?.email || '',
-    village: user?.village || 'Village Rampur',
-    district: user?.district || 'Karnal',
-    state: user?.state || 'Haryana',
-    pincode: user?.pincode || '132001'
-  });
-
-  useEffect(() => {
-    if (user) {
-      setProfileForm({
-        name: user.name || '',
-        phone: user.phone || '',
-        email: user.email || '',
-        village: user.village || 'Village Rampur',
-        district: user.district || 'Karnal',
-        state: user.state || 'Haryana',
-        pincode: user.pincode || '132001'
-      });
-    }
-  }, [user]);
 
   // Role-based horizontal navbar items (NEWS REMOVED FROM NAVBAR AS REQUESTED)
   const getNavItems = () => {
@@ -80,15 +54,6 @@ export const Navbar = () => {
 
   const navItems = getNavItems();
 
-  const handleProfileSave = (e) => {
-    e.preventDefault();
-    updateUserProfile(profileForm);
-    setSaveSuccessMsg('Profile & Location updated successfully! Dashboard telemetry updated.');
-    setTimeout(() => {
-      setSaveSuccessMsg('');
-      setShowProfileModal(false);
-    }, 1200);
-  };
 
   return (
     <>
@@ -236,7 +201,7 @@ export const Navbar = () => {
                     overflow: 'hidden'
                   }}>
                     <button
-                      onClick={() => { setShowProfileModal(true); setShowDropdown(false); }}
+                      onClick={() => { navigate('/profile'); setShowDropdown(false); }}
                       style={{
                         width: '100%',
                         padding: '0.75rem 1rem',
@@ -291,149 +256,6 @@ export const Navbar = () => {
         </div>
       </nav>
 
-      {/* Profile & Location Modal (Opens from top right corner click) */}
-      {showProfileModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.65)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          backdropFilter: 'blur(4px)',
-          padding: '1rem'
-        }}>
-          <div className="card animate-fade-in" style={{ width: '100%', maxWidth: '580px', background: 'var(--card-bg)', borderLeft: '5px solid var(--primary)', borderRadius: 'var(--radius-lg)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', paddingBottom: '0.8rem', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <div style={{ background: 'var(--light-green)', padding: '0.5rem', borderRadius: '50%' }}>
-                  <User size={22} color="var(--primary)" />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Farmer Profile & Location Details 🧑‍🌾</h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Update your personal info and farm location details</span>
-                </div>
-              </div>
-              <button onClick={() => setShowProfileModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            {saveSuccessMsg && (
-              <div style={{ background: 'var(--light-green)', color: 'var(--primary-hover)', padding: '0.8rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '600', fontSize: '0.85rem' }}>
-                <CheckCircle2 size={18} color="var(--primary)" />
-                {saveSuccessMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleProfileSave} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ background: 'var(--bg)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <User size={16} /> Personal Identification
-                </h4>
-                <div className="grid-2">
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Full Name</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="e.g. Ramesh Kumar"
-                      value={profileForm.name}
-                      onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Mobile Phone Number</label>
-                    <input
-                      type="tel"
-                      className="input-field"
-                      placeholder="+91 9876543210"
-                      value={profileForm.phone}
-                      onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div style={{ marginTop: '0.8rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Email Address</label>
-                  <input
-                    type="email"
-                    className="input-field"
-                    placeholder="farmer@cropnova.com"
-                    value={profileForm.email}
-                    onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div style={{ background: 'var(--bg)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                <h4 style={{ fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <MapPin size={16} /> Location & Regional Details (Updates Weather Telemetry)
-                </h4>
-                <div className="grid-2">
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Village / Town</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="e.g. Village Rampur"
-                      value={profileForm.village}
-                      onChange={e => setProfileForm({ ...profileForm, village: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>District / Region</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="e.g. Karnal, Ludhiana, Jaipur"
-                      value={profileForm.district}
-                      onChange={e => setProfileForm({ ...profileForm, district: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid-2" style={{ marginTop: '0.8rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>State</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="e.g. Haryana, Punjab, Rajasthan"
-                      value={profileForm.state}
-                      onChange={e => setProfileForm({ ...profileForm, state: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Pincode</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder="e.g. 132001"
-                      value={profileForm.pincode}
-                      onChange={e => setProfileForm({ ...profileForm, pincode: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button type="button" onClick={() => setShowProfileModal(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.4rem' }}>
-                  <Save size={16} /> Approve & Update Profile Details
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 };

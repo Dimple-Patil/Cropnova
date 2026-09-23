@@ -9,15 +9,7 @@ import { api } from '../utils/api';
 export const FarmerDashboard = () => {
   const { user } = useAuth();
   
-  // Farm plots state with localStorage persistence
-  const [farms, setFarms] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cropnova_farms');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [farms, setFarms] = useState([]);
   const [showAddFarmModal, setShowAddFarmModal] = useState(false);
   const [farmSaveSuccess, setFarmSaveSuccess] = useState('');
 
@@ -48,20 +40,19 @@ export const FarmerDashboard = () => {
 
   // Sync regional weather & nearby soil labs whenever user location changes (from top right profile updates!)
   useEffect(() => {
-    const activeDistrict = user?.district || 'Karnal';
-    const activeState = user?.state || 'Haryana';
+    const activeDistrict = user?.district || '';
+    const activeState = user?.state || '';
     fetchLiveRegionWeather(activeDistrict, activeState);
   }, [user?.district, user?.state, user?.village]);
 
   const loadFarms = async () => {
     try {
       const data = await api.get('/farms');
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setFarms(data);
-        localStorage.setItem('cropnova_farms', JSON.stringify(data));
       }
     } catch (err) {
-      console.warn('API connection offline or unauthenticated, using local storage farms');
+      console.warn('API connection offline or unauthenticated');
     }
   };
 
@@ -83,8 +74,8 @@ export const FarmerDashboard = () => {
 
   // Dynamic Lookup Engine for Authentic Location-Specific Soil Testing & Analysis Centers
   const getRealTimeSoilLabs = (city, state) => {
-    const cityName = city ? city.trim() : 'Karnal';
-    const stateName = state ? state.trim() : 'Haryana';
+    const cityName = city ? city.trim() : '';
+    const stateName = state ? state.trim() : '';
     const normalizedCity = cityName.toLowerCase();
 
     // Database of authentic laboratories with real official contact numbers & verified fees
@@ -246,7 +237,7 @@ export const FarmerDashboard = () => {
 
     const updatedFarms = [createdFarm, ...farms];
     setFarms(updatedFarms);
-    localStorage.setItem('cropnova_farms', JSON.stringify(updatedFarms));
+
 
     setShowAddFarmModal(false);
     setFarmName('');
@@ -265,7 +256,6 @@ export const FarmerDashboard = () => {
     }
     const updated = farms.filter(f => f.id !== id);
     setFarms(updated);
-    localStorage.setItem('cropnova_farms', JSON.stringify(updated));
   };
 
   const filteredNews = newsCategory === 'All'
@@ -297,7 +287,7 @@ export const FarmerDashboard = () => {
               CURRENT REGISTERED FARM LOCATION
             </div>
             <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-              {user?.village ? `${user.village}, ` : ''}{user?.district || 'Karnal'}, {user?.state || 'Haryana'} {user?.pincode ? `(${user.pincode})` : ''}
+              {user?.village ? `${user.village}, ` : ''}{user?.district || '—'}{user?.state ? `, ${user.state}` : ''} {user?.pincode ? `(${user.pincode})` : ''}
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               Farmer Name: <strong>{user?.name || 'Farmer Account'}</strong> | Phone: <strong>{user?.phone || 'Not Provided'}</strong>
@@ -514,7 +504,7 @@ export const FarmerDashboard = () => {
           <h2>Your Registered Land & Soil Information 🌾</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Input your land plot acreage, soil category, pH level, and organic matter metrics.</p>
         </div>
-        <button onClick={() => setShowAddFarmModal(true)} className="btn btn-primary">
+        <button onClick={() => { setShowAddFarmModal(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn btn-primary">
           <Plus size={18} /> Register Land & Soil Details
         </button>
       </div>
@@ -533,7 +523,7 @@ export const FarmerDashboard = () => {
           <p style={{ color: 'var(--text-secondary)', maxWidth: '460px', margin: '0.4rem auto 1.2rem', fontSize: '0.9rem' }}>
             You have not registered any land yet. Click below to fill in details about your farm plots, soil type, and land size.
           </p>
-          <button onClick={() => setShowAddFarmModal(true)} className="btn btn-primary">
+          <button onClick={() => { setShowAddFarmModal(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn btn-primary">
             <Plus size={18} /> Add Your Land & Soil Details
           </button>
         </div>
@@ -567,7 +557,7 @@ export const FarmerDashboard = () => {
 
       {/* Modal for Land & Soil Input */}
       {showAddFarmModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)', padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)', padding: '1rem', paddingTop: '80px', overflowY: 'auto' }}>
           <div className="card animate-fade-in" style={{ width: '100%', maxWidth: '480px', background: 'var(--card-bg)', borderLeft: '5px solid var(--primary)', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.6rem', borderBottom: '1px solid var(--border)' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary)' }}>Register Your Land & Soil Details 🌾</h3>

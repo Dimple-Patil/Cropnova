@@ -1,49 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../utils/api';
+import { api, setApiToken } from '../utils/api';
 
 const AuthContext = createContext();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-const SESSION_KEY = 'cropnova_session';
-
 const saveSession = (user) => {
-  if (user) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    if (user.email) {
-      localStorage.setItem(`user_profile_${user.email}`, JSON.stringify(user));
-    }
-    localStorage.setItem('farmer_profile', JSON.stringify(user));
-  } else {
-    localStorage.removeItem(SESSION_KEY);
-  }
+  // Session persistence removed as per requirements.
 };
 
 const loadSession = () => {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    let sessionUser = raw ? JSON.parse(raw) : null;
-    
-    // Fallback load from farmer_profile if session is missing location fields
-    const savedFarmerProfile = localStorage.getItem('farmer_profile');
-    const farmerObj = savedFarmerProfile ? JSON.parse(savedFarmerProfile) : {};
-
-    if (sessionUser || savedFarmerProfile) {
-      const merged = {
-        name: 'Ramesh Kumar',
-        village: 'Village Rampur',
-        district: 'Karnal',
-        state: 'Haryana',
-        pincode: '132001',
-        phone: '+91 9876543210',
-        ...farmerObj,
-        ...sessionUser
-      };
-      return merged;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return null;
 };
 
 // ── Provider ─────────────────────────────────────────────────────────────────
@@ -55,7 +21,11 @@ export const AuthProvider = ({ children }) => {
   // Sync user to localStorage on every change
   const setUser = (u) => {
     setUserRaw(u);
-    saveSession(u);
+    if (u && u.token) {
+      setApiToken(u.token);
+    } else {
+      setApiToken(null);
+    }
   };
 
   const toggleTheme = () => {
@@ -65,16 +35,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserProfile = async (updatedFields) => {
-    setUser(prev => {
-      const updated = prev ? { ...prev, ...updatedFields } : updatedFields;
-      saveSession(updated);
-      return updated;
-    });
-
     try {
       await api.put('/auth/profile', updatedFields);
+      // Only update local state if backend update succeeds
+      setUser(prev => {
+        const updated = prev ? { ...prev, ...updatedFields } : updatedFields;
+        return updated;
+      });
+      return true;
     } catch (err) {
-      console.warn('Backend profile update bypassed, saved to local storage');
+      console.error('Failed to update profile on backend:', err);
+      alert('Failed to update profile: ' + err.message);
+      return false;
     }
   };
 
@@ -94,10 +66,6 @@ export const AuthProvider = ({ children }) => {
   const verifyOtp = (enteredOtp) => {
     if (pendingOtpUser && (enteredOtp === pendingOtpUser.otpCode || enteredOtp === '123456')) {
       const verifiedUser = {
-        village: 'Village Rampur',
-        district: 'Karnal',
-        state: 'Haryana',
-        pincode: '132001',
         ...pendingOtpUser,
         isVerified: true
       };
@@ -110,49 +78,18 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      let loggedUser;
-      try {
-        const res = await api.post('/auth/login', { email, password });
-        loggedUser = {
-          ...res.user,
-          token: res.token,
-          isVerified: true
-        };
-      } catch (err) {
-        // Fallback for local session if backend unreachable
-        loggedUser = {
-          id: Date.now(),
-          email,
-          name: email ? email.split('@')[0] : 'Farmer Account',
-          role: 'farmer',
-          isVerified: true
-        };
-      }
-
-      // Check if user has a previously saved profile for this email or farmer_profile
-      let savedProfile = {};
-      try {
-        const rawUserProf = localStorage.getItem(`user_profile_${email}`);
-        const rawFarmerProf = localStorage.getItem('farmer_profile');
-        if (rawUserProf) savedProfile = JSON.parse(rawUserProf);
-        else if (rawFarmerProf) savedProfile = JSON.parse(rawFarmerProf);
-      } catch (e) {}
-
-      const mergedUser = {
-        name: loggedUser.name || savedProfile.name || 'Ramesh Kumar',
-        phone: loggedUser.phone || savedProfile.phone || '+91 9876543210',
-        village: loggedUser.village || savedProfile.village || 'Village Rampur',
-        district: loggedUser.district || savedProfile.district || 'Karnal',
-        state: loggedUser.state || savedProfile.state || 'Haryana',
-        pincode: loggedUser.pincode || savedProfile.pincode || '132001',
-        ...savedProfile,
-        ...loggedUser
+      const res = await api.post('/auth/login', { email, password });
+      const loggedUser = {
+        ...res.user,
+        token: res.token,
+        isVerified: true
       };
 
-      setUser(mergedUser);
+      setUser(loggedUser);
       return true;
     } catch (err) {
-      console.error(err);
+      console.error('Login failed (backend might be down or invalid credentials):', err);
+      alert('Login failed: ' + (err.message || 'Database might be down.'));
       return false;
     }
   };

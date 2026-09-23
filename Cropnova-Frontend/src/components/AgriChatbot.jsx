@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, X, Upload, ShieldCheck, AlertTriangle, Bug, Sprout } from 'lucide-react';
+import { Send, Sparkles, X, Upload, Sprout, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 export const AgriChatbot = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       sender: 'bot',
-      text: 'Namaste! 🙏 I am Krishimitra, your personal AI Agriculture Assistant. Ask me about crop recommendations, Integrated Pest Management (IPM), weather tips, or upload/snap a crop/leaf photo below for instant AI Disease & Pest identification!'
+      text: 'Namaste! I am Krishimitra, your Cropnova AI agent. I can help with crops, soil, fertilizer, pest and disease scan, weather, marketplace, vendor tools, expert consultation, schemes, expenses, harvest planning, alerts, reports, and profile guidance.'
     }
   ]);
   const [input, setInput] = useState('');
@@ -24,36 +29,29 @@ export const AgriChatbot = () => {
   }, [messages, isOpen]);
 
   const quickPrompts = [
-    '📷 AI Disease & Pest Photo Scan',
-    '🐛 Integrated Pest Management (IPM)',
-    '🌾 Crop Recommendations',
-    '💊 Urea & DAP Dosage'
+    'Show all Cropnova features',
+    'Recommend crop and fertilizer plan',
+    'Diagnose pest or disease',
+    'Summarize my farm status'
   ];
 
-  const processQuery = (rawInput) => {
-    const query = rawInput.toLowerCase();
-    let botReply = '';
-
-    if (query.includes('pest') || query.includes('insect') || query.includes('ipm') || query.includes('planthopper') || query.includes('armyworm') || query.includes('caterpillar') || query.includes('bollworm')) {
-      botReply = '🐛 Integrated Pest Management (IPM) Guide from Krishimitra:\n• Brown Planthopper (BPH) on Paddy: Maintain water depth < 5cm, use yellow sticky traps (10/acre) & spray Neem kernel extract (5%). Chemical: Imidacloprid 17.8% SL @ 0.5ml/L.\n• Fall Armyworm (FAW) on Maize: Deep summer plowing + release Trichogramma parasitoids @ 50,000/acre. Chemical: Emamectin benzoate 5% SG @ 0.4g/L.\n• Pink Bollworm on Cotton: Erect pheromone traps + spray Neem oil 1500 ppm @ 5ml/L.';
-    } else if (query.includes('recommend') || query.includes('suggest') || query.includes('grow') || query.includes('which crop') || query.includes('rabi') || query.includes('kharif')) {
-      botReply = '💡 Smart Crop Recommendation from Krishimitra:\n• For Rabi (Winter) Season in Loamy Soil: Grow Wheat (High yield: 22-25 Quintals/Acre) or Mustard (High oil yield).\n• For Kharif (Monsoon) Season: Basmati Paddy 1121 is highly suitable with good market rates.';
-    } else if (query.includes('disease') || query.includes('leaf') || query.includes('yellow') || query.includes('spot') || query.includes('photo') || query.includes('scan')) {
-      botReply = '🔬 Krishimitra AI Disease Scanner & Diagnosis:\nUpload a leaf photo using the image upload button (📷) below!\nCommon diagnosis guidelines:\n• Yellowing Tips / Blight: Spray Neem oil formulation (5ml/L). If fungal, apply Copper Oxychloride (2g/L).\n• Leaf Rust (Puccinia): Apply Propiconazole 25% EC @ 1 ml/L.';
-    } else if (query.includes('fertilizer') || query.includes('urea') || query.includes('dap') || query.includes('dosage')) {
-      botReply = '💊 Krishimitra Fertilizer Dosage Guide:\nApply Urea in 3 split doses (basal at sowing, tillering, and flowering). Mix 25kg DAP/acre during land preparation for robust root strength.';
-    } else if (query.includes('weather') || query.includes('rain') || query.includes('shower')) {
-      botReply = '🌤️ Weather Advisory from Krishimitra:\nAlways check your regional dashboard forecast. Avoid applying chemical bio-sprays if rainfall is expected within 24 hours to prevent runoff.';
-    } else if (query.includes('water') || query.includes('irrigation')) {
-      botReply = '💧 Krishimitra Irrigation Schedule:\nMaintain 3-5 cm standing water for paddy fields. For wheat crops, irrigate at Crown Root Initiation (CRI) stage around 21 days after sowing.';
-    } else {
-      botReply = `🌱 Krishimitra's advice regarding "${rawInput}":\nTo maximize farm yield, maintain balanced NPK nutrients, inspect for early pest activity, and ask me anytime for IPM pest management or AI disease photo scans!`;
+  const askAgent = async (userText) => {
+    try {
+      const response = await api.post('/agent/chat', {
+        message: userText,
+        userProfile: user
+      });
+      return response;
+    } catch (err) {
+      console.error('AI Agent Error:', err);
+      return { 
+        reply: "I am having trouble connecting to the OpenAI servers right now. Please ensure your backend server is running and the API key is valid.", 
+        feature: null 
+      };
     }
-
-    return botReply;
   };
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     if (e) e.preventDefault();
     if (!input.trim()) return;
 
@@ -62,11 +60,11 @@ export const AgriChatbot = () => {
     setInput('');
     setIsTyping(true);
 
+    const response = await askAgent(userText);
     setTimeout(() => {
-      const botReply = processQuery(userText);
-      setMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
+      setMessages(prev => [...prev, { sender: 'bot', text: response.reply, feature: response.feature }]);
       setIsTyping(false);
-    }, 600);
+    }, 350);
   };
 
   // AI Image Scanner Upload handler directly in Krishimitra Chatbot
@@ -82,25 +80,23 @@ export const AgriChatbot = () => {
     setIsTyping(true);
 
     setTimeout(() => {
-      const sampleDiagnostics = [
-        '🔬 Krishimitra AI Diagnostic Result: Brown Planthopper Pest Attack (BPH)\n• Confidence: 95.2%\n• Cultural Control: Keep water depth below 5cm, install yellow sticky traps (10/acre).\n• Organic Remedy: Spray 5% Neem Seed Kernel Extract (NSKE).\n• Chemical Remedy: Apply Imidacloprid 17.8% SL @ 0.5ml/L.',
-        '🔬 Krishimitra AI Diagnostic Result: Wheat Leaf Rust (Puccinia triticina)\n• Confidence: 94.5%\n• Organic Treatment: Spray Neem oil formulation (5ml/L water).\n• Chemical Remedy: Apply Propiconazole 25% EC @ 1 ml/liter.'
-      ];
-      const diag = sampleDiagnostics[Math.floor(Math.random() * sampleDiagnostics.length)];
-      setMessages(prev => [...prev, { sender: 'bot', text: diag }]);
+      setMessages(prev => [...prev, { 
+        sender: 'bot', 
+        text: 'I have received your photo. Since visual analysis via the OpenAI Vision API is still being integrated, please describe the symptoms you see in the photo (e.g., "yellow spots on leaves") and I will diagnose it for you based on the description!' 
+      }]);
       setIsTyping(false);
     }, 1000);
   };
 
-  const handlePromptClick = (promptText) => {
+  const handlePromptClick = async (promptText) => {
     setMessages(prev => [...prev, { sender: 'user', text: promptText }]);
     setIsTyping(true);
 
+    const response = await askAgent(promptText);
     setTimeout(() => {
-      const botReply = processQuery(promptText);
-      setMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
+      setMessages(prev => [...prev, { sender: 'bot', text: response.reply, feature: response.feature }]);
       setIsTyping(false);
-    }, 600);
+    }, 350);
   };
 
   return (
@@ -130,7 +126,7 @@ export const AgriChatbot = () => {
         }}
       >
         <Sprout size={22} color="#FFF" />
-        <span>Ask Krishimitra AI 🌾</span>
+        <span>Ask Krishimitra AI</span>
       </button>
 
       {/* Floating Chat Modal */}
@@ -165,8 +161,8 @@ export const AgriChatbot = () => {
                 <Sprout size={20} />
               </div>
               <div>
-                <h4 style={{ color: '#FFF', margin: 0, fontSize: '1rem', fontWeight: '800' }}>Krishimitra 🌾 AI Assistant</h4>
-                <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>Online • IPM & Pest/Disease Photo Diagnostics</span>
+                <h4 style={{ color: '#FFF', margin: 0, fontSize: '1rem', fontWeight: '800' }}>Krishimitra AI Agent</h4>
+                <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>Cropnova features, planning, diagnostics</span>
               </div>
             </div>
             <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: '#FFF', cursor: 'pointer' }}>
@@ -229,12 +225,38 @@ export const AgriChatbot = () => {
                     <img src={msg.imageSrc} alt="Uploaded leaf" style={{ width: '100%', maxHeight: '140px', borderRadius: '8px', marginBottom: '0.4rem', objectFit: 'cover' }} />
                   )}
                   {msg.text}
+                  {msg.feature?.route && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate(msg.feature.route);
+                        setIsOpen(false);
+                      }}
+                      style={{
+                        marginTop: '0.7rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        border: '1px solid var(--primary)',
+                        background: 'var(--light-green)',
+                        color: 'var(--primary)',
+                        borderRadius: '8px',
+                        padding: '0.45rem 0.6rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontSize: '0.78rem'
+                      }}
+                    >
+                      <ExternalLink size={13} />
+                      Open {msg.feature.label}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
             {isTyping && (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <Sparkles size={14} color="var(--primary)" /> Krishimitra AI is processing your query...
+                <Sparkles size={14} color="var(--primary)" /> Krishimitra is checking Cropnova context...
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -250,7 +272,7 @@ export const AgriChatbot = () => {
             <input
               type="text"
               className="input-field"
-              placeholder="Ask Krishimitra about crops, pests or upload photo..."
+              placeholder="Ask about any Cropnova feature..."
               value={input}
               onChange={e => setInput(e.target.value)}
               style={{ fontSize: '0.85rem', padding: '0.6rem 0.8rem' }}

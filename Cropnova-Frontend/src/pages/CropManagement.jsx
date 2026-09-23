@@ -104,17 +104,32 @@ const getIrrigationPlan = ({ cropName, irrigationSource, currentMethod, acreage 
 // =====================================================================
 export const CropManagement = () => {
   const [crops, setCrops]               = useState([]);
-  const [showModal, setShowModal]       = useState(false);
+  const [farms, setFarms]               = useState([]);
+  const [showForm, setShowForm]         = useState(false);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [newCrop, setNewCrop]           = useState({
     cropName: '', sowingDate: '', expectedHarvestDate: '',
     fieldSection: '', acreage: '', irrigationSource: '',
-    currentMethod: '', soilType: '', budget: ''
+    currentMethod: '', soilType: '', budget: '', farmId: ''
   });
 
   useEffect(() => {
     loadCrops();
+    loadFarms();
   }, []);
+
+  const loadFarms = async () => {
+    try {
+      const data = await api.get('/farms');
+      setFarms(data);
+      // Auto-select first farm if only one exists
+      if (data.length === 1) {
+        setNewCrop(prev => ({ ...prev, farmId: String(data[0].id) }));
+      }
+    } catch (err) {
+      console.error('Failed to load farms', err);
+    }
+  };
 
   const loadCrops = async () => {
     try {
@@ -137,28 +152,31 @@ export const CropManagement = () => {
 
   const handleAddCrop = async (e) => {
     e.preventDefault();
+    const selectedFarmId = newCrop.farmId || (farms.length > 0 ? farms[0].id : null);
+    if (!selectedFarmId) {
+      alert('Please add a Farm in the Dashboard first before adding a crop.');
+      return;
+    }
     try {
-      // Create crop in DB (requires a farmId, for now we can just grab the first farm if available, or pass null)
-      // We will need farms to be loaded to attach a crop properly.
-      const farmsRes = await api.get('/farms').catch(() => []);
-      const defaultFarmId = farmsRes.length > 0 ? farmsRes[0].id : null;
-
-      const createdDbCrop = await api.post('/crops', {
-        farmId: defaultFarmId,
+      await api.post('/crops', {
+        farmId: selectedFarmId,
         cropName: newCrop.cropName,
         variety: 'Standard',
         sowingDate: newCrop.sowingDate,
         expectedHarvestDate: newCrop.expectedHarvestDate,
         status: 'Active (Sown)',
-        fieldSection: newCrop.fieldSection
+        fieldSection: newCrop.fieldSection,
+        acreage: newCrop.acreage,
+        irrigationSource: newCrop.irrigationSource,
+        budget: newCrop.budget
       });
       
       await loadCrops();
-      setShowModal(false);
-      setNewCrop({ cropName: '', sowingDate: '', expectedHarvestDate: '', fieldSection: '', acreage: '', irrigationSource: '', currentMethod: '', soilType: '', budget: '' });
+      setShowForm(false);
+      setNewCrop({ cropName: '', sowingDate: '', expectedHarvestDate: '', fieldSection: '', acreage: '', irrigationSource: '', currentMethod: '', soilType: '', budget: '', farmId: farms.length === 1 ? String(farms[0].id) : '' });
     } catch (err) {
       console.error('Failed to add crop', err);
-      alert('Error adding crop. Ensure you have added a Farm in the Dashboard first.');
+      alert('Error adding crop: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -174,7 +192,7 @@ export const CropManagement = () => {
 
   const set = (key, val) => setNewCrop(prev => ({ ...prev, [key]: val }));
 
-  return (
+  const renderList = () => (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
@@ -185,7 +203,7 @@ export const CropManagement = () => {
             Add your crops with water management & budget details — AI instantly generates irrigation schedules and cost/income estimates.
           </p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn btn-primary">
+        <button onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn btn-primary">
           <Plus size={18} /> Add Crop
         </button>
       </div>
@@ -198,7 +216,7 @@ export const CropManagement = () => {
           <p style={{ color: 'var(--text-secondary)', maxWidth: '480px', margin: '0.4rem auto 1.2rem', fontSize: '0.9rem' }}>
             Add your crop name, water source, and budget — AI will instantly generate an optimal irrigation schedule and cost/income estimate.
           </p>
-          <button onClick={() => setShowModal(true)} className="btn btn-primary">
+          <button onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn btn-primary">
             <Plus size={18} /> Add Your First Crop
           </button>
         </div>
@@ -396,22 +414,60 @@ export const CropManagement = () => {
           </div>
         </div>
       )}
+    </div>
+  );
 
-      {/* ── Add Crop Modal ───────────────────────────────────── */}
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }}>
-          <div className="card" style={{ width: '520px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg)' }}>
-            <h3 style={{ color: 'var(--primary)', marginBottom: '0.3rem' }}>Add Crop Details</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>
-              Fill in crop info, water management & budget — AI will generate your irrigation schedule and cost/income estimate instantly.
-            </p>
+  return (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {!showForm ? renderList() : null}
+
+      {/* ── Add Crop Full Page Form ───────────────────────────────────── */}
+      {showForm && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+          <button onClick={() => setShowForm(false)} className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '0.4rem 0.8rem' }}>
+            &larr; Back to Records
+          </button>
+          
+          <div className="card" style={{ background: 'var(--card-bg)', borderLeft: '5px solid var(--primary)', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.6rem', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--primary)' }}>Add Crop Details 🌾</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.3rem 0 0' }}>
+                  Fill in crop info, water management & budget — AI will generate your irrigation schedule and cost/income estimate instantly.
+                </p>
+              </div>
+            </div>
 
             <form onSubmit={handleAddCrop} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-              {/* Section A: Crop Info */}
+              {/* No farms warning */}
+              {farms.length === 0 && (
+                <div style={{ background: '#FFF3E0', border: '1px solid #FFCC80', borderRadius: 'var(--radius-md)', padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <AlertCircle size={20} color="#E65100" />
+                  <div>
+                    <strong style={{ color: '#E65100', fontSize: '0.85rem' }}>No farms registered yet!</strong>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Please add a farm in the <strong>Dashboard</strong> first, then come back to add crops.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Section A: Farm & Crop Info */}
               <div style={{ background: 'var(--light-green)', padding: '0.7rem 0.9rem', borderRadius: 'var(--radius-md)' }}>
                 <strong style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>🌾 CROP INFORMATION</strong>
               </div>
+
+              {/* Farm Selector */}
+              {farms.length > 0 && (
+                <div>
+                  <label style={{ fontSize: '0.82rem', fontWeight: '600' }}>Select Farm *</label>
+                  <select className="input-field" value={newCrop.farmId} onChange={e => set('farmId', e.target.value)} required>
+                    {farms.length > 1 && <option value="">-- Select a farm --</option>}
+                    {farms.map(f => (
+                      <option key={f.id} value={f.id}>{f.name} ({f.size_acres || '—'} acres, {f.location || '—'})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid-2">
                 <div>
@@ -505,16 +561,16 @@ export const CropManagement = () => {
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">
-                  <Wallet size={16} /> Save & Generate Plans
+              <div style={{ marginTop: '1.2rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.8rem 1.2rem', width: '100%', fontSize: '1rem' }}>
+                  <Wallet size={18} style={{ marginRight: '0.5rem' }} /> Save & Generate Plans
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 };

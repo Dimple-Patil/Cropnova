@@ -76,15 +76,10 @@ export const LandingHomePage = () => {
     fetchGpsLocation();
 
     // Fetch News & Agri Tips
-    fetch('/api/news')
-      .then(res => res.json())
-      .then(d => setNews(d))
-      .catch(() => {
-        setNews([
-          { id: 901, title: 'Bumper Monsoon Rainfall Boosts Kharif Crop Yield Predictions', category: 'Weather & Forecast', content: 'Agricultural ministry reports favorable soil moisture reserves across northern and central plains.', source: 'AgriNews India', date: '2026-09-01' },
-          { id: 902, title: 'Government Revises MSP for Wheat & Mustard for 2026-27 Season', category: 'Market Prices', content: 'Minimum Support Price (MSP) increased by 7% per quintal to support farmer income stability.', source: 'Market Express', date: '2026-08-29' }
-        ]);
-      });
+    setNews([
+      { id: 901, title: 'Bumper Monsoon Rainfall Boosts Kharif Crop Yield Predictions', category: 'Weather & Forecast', content: 'Agricultural ministry reports favorable soil moisture reserves across northern and central plains.', source: 'AgriNews India', date: '2026-09-01' },
+      { id: 902, title: 'Government Revises MSP for Wheat & Mustard for 2026-27 Season', category: 'Market Prices', content: 'Minimum Support Price (MSP) increased by 7% per quintal to support farmer income stability.', source: 'Market Express', date: '2026-08-29' }
+    ]);
   }, []);
 
   const handleLocationSubmit = (e) => {

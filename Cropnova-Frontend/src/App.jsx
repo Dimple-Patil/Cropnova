@@ -20,6 +20,7 @@ import { HarvestManagement } from './pages/HarvestManagement';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ReportsAnalytics } from './pages/ReportsAnalytics';
 import { AdminPanel } from './pages/AdminPanel';
+import { ProfilePage } from './pages/ProfilePage';
 
 // Protected Route Wrapper Enforcing Strict Role Access
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -65,6 +66,7 @@ export function App() {
             <Route path="/notifications" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor']}><NotificationsPage /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute allowedRoles={['farmer']}><ReportsAnalytics /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor', 'admin']}><ProfilePage /></ProtectedRoute>} />
           </Routes>
       </div>
 

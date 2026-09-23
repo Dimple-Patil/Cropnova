@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Wheat, Warehouse, Calendar, CheckCircle2, TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { Wheat, Warehouse, Calendar, CheckCircle2, TrendingUp, Plus, Trash2, X } from 'lucide-react';
 import { api } from '../utils/api';
 
 export const HarvestManagement = () => {
   const [harvests, setHarvests] = useState([]);
-  const [showModal, setShowModal] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [newHarvest, setNewHarvest] = useState({
     crop: '', yieldQuintals: '', acreArea: '', storageLocation: '', status: 'Stored', date: new Date().toISOString().split('T')[0]
   });
@@ -24,20 +24,20 @@ export const HarvestManagement = () => {
     e.preventDefault();
     // Since we don't have a dedicated harvest table in schema, we mock add in UI for demo
     setHarvests(prev => [{ id: Date.now(), ...newHarvest }, ...prev]);
-    setShowModal(false);
+    setShowForm(false);
     setNewHarvest({ crop: '', yieldQuintals: '', acreArea: '', storageLocation: '', status: 'Stored', date: new Date().toISOString().split('T')[0] });
   };
 
   const handleDelete = (id) => setHarvests(prev => prev.filter(h => h.id !== id));
 
-  return (
+  const renderList = () => (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Harvest Records & Yield Analytics 🌾</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Log harvest yields, quintal-per-acre performance, and storage locations.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn btn-primary">
+        <button onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn btn-primary">
           <Plus size={18} /> Log Harvest
         </button>
       </div>
@@ -47,7 +47,7 @@ export const HarvestManagement = () => {
           <Wheat size={52} color="var(--primary)" style={{ marginBottom: '1rem' }} />
           <h3>No Harvest Records Yet</h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>Click "Log Harvest" to record your crop yield and storage details.</p>
-          <button onClick={() => setShowModal(true)} className="btn btn-primary"><Plus size={16} /> Log First Harvest</button>
+          <button onClick={() => { setShowForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="btn btn-primary"><Plus size={16} /> Log First Harvest</button>
         </div>
       ) : (
         <div className="grid-2">
@@ -79,13 +79,27 @@ export const HarvestManagement = () => {
           ))}
         </div>
       )}
+    </div>
+  );
 
-      {/* Add Harvest Modal */}
-      {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div className="card" style={{ width: '460px', background: 'var(--bg)' }}>
-            <h3>Log Harvest Record</h3>
-            <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+  return (
+    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {!showForm ? renderList() : null}
+
+
+      {/* Add Harvest Full Page Form */}
+      {showForm && (
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+          <button onClick={() => setShowForm(false)} className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '0.4rem 0.8rem' }}>
+            &larr; Back to Records
+          </button>
+          
+          <div className="card" style={{ background: 'var(--card-bg)', borderLeft: '5px solid var(--primary)', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.6rem', borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--primary)' }}>Log Harvest Record 🌾</h3>
+            </div>
+            
+            <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ fontSize: '0.85rem', fontWeight: '600' }}>Crop Name *</label>
                 <input type="text" className="input-field" placeholder="e.g. Wheat, Mustard" value={newHarvest.crop} onChange={e => setNewHarvest({ ...newHarvest, crop: e.target.value })} required />
@@ -118,14 +132,16 @@ export const HarvestManagement = () => {
                   <input type="date" className="input-field" value={newHarvest.date} onChange={e => setNewHarvest({ ...newHarvest, date: e.target.value })} required />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Harvest</button>
+              <div style={{ marginTop: '1.2rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.8rem 1.2rem', width: '100%', fontSize: '1rem' }}>
+                  Save Harvest Record
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 };

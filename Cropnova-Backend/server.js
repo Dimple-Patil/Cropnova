@@ -12,6 +12,228 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cropnova_super_secret_key_2026';
 app.use(cors());
 app.use(express.json());
 
+// Middleware for auth
+const auth = (req, res, next) => {
+  const token = req.header('Authorization')?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token, authorization denied' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (e) {
+    res.status(400).json({ error: 'Token is not valid' });
+  }
+};
+
+const optionalAuth = (req, res, next) => {
+  const token = req.header('Authorization')?.split(' ')[1];
+  if (!token) return next();
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+  } catch (e) {
+    req.user = null;
+  }
+  next();
+};
+
+const cropnovaFeatures = [
+  {
+    key: 'dashboard',
+    label: 'Farmer Dashboard',
+    route: '/',
+    intents: ['dashboard', 'overview', 'summary', 'home', 'farm status'],
+    answer: 'Use the Farmer Dashboard for farm overview, active crop counts, upcoming tasks, weather signals, and recent activity.'
+  },
+  {
+    key: 'crops',
+    label: 'Crop Management',
+    route: '/crops',
+    intents: ['crop', 'sowing', 'variety', 'field', 'farm', 'planting'],
+    answer: 'Crop Management helps you add farms, register crops, track sowing dates, varieties, field sections, and crop status.'
+  },
+  {
+    key: 'soil',
+    label: 'Soil Analysis & Health',
+    route: '/soil',
+    intents: ['soil', 'ph', 'organic carbon', 'nitrogen', 'phosphorus', 'potassium', 'npk'],
+    answer: 'Soil Analysis reviews pH, soil type, organic carbon, and nutrient balance so recommendations match field conditions.'
+  },
+  {
+    key: 'fertilizer',
+    label: 'Fertilizer Calculator',
+    route: '/fertilizers',
+    intents: ['fertilizer', 'urea', 'dap', 'mop', 'dosage', 'dose', 'nutrient'],
+    answer: 'The Fertilizer Calculator turns crop, acreage, and soil inputs into split-dose NPK guidance.'
+  },
+  {
+    key: 'marketplace',
+    label: 'Marketplace',
+    route: '/marketplace',
+    intents: ['market', 'buy', 'sell', 'price', 'seed', 'equipment', 'input'],
+    answer: 'Marketplace connects farmers with seeds, fertilizers, crop protection products, equipment, and vendor listings.'
+  },
+  {
+    key: 'vendor',
+    label: 'Vendor Inventory & Sales',
+    route: '/vendor',
+    intents: ['vendor', 'inventory', 'sales', 'stock', 'orders'],
+    answer: 'Vendor Portal supports inventory, stock visibility, product listings, and sales workflows for agricultural suppliers.'
+  },
+  {
+    key: 'expert',
+    label: 'Expert Consultation',
+    route: '/expert',
+    intents: ['expert', 'consult', 'advisor', 'agronomist', 'help'],
+    answer: 'Expert Consultation is for getting specialist guidance on crops, soil, pests, irrigation, and farm planning.'
+  },
+  {
+    key: 'schemes',
+    label: 'Government Schemes',
+    route: '/schemes',
+    intents: ['scheme', 'subsidy', 'government', 'pm-kisan', 'loan', 'insurance'],
+    answer: 'Government Schemes helps farmers discover subsidies, support programs, crop insurance, and eligibility paths.'
+  },
+  {
+    key: 'news',
+    label: 'News & Updates',
+    route: '/news',
+    intents: ['news', 'update', 'mandi', 'policy', 'alert'],
+    answer: 'News & Updates surfaces agriculture news, market signals, weather advisories, and policy changes.'
+  },
+  {
+    key: 'finance',
+    label: 'Farm Expenses & Income',
+    route: '/finance',
+    intents: ['expense', 'income', 'profit', 'loss', 'finance', 'cost', 'budget'],
+    answer: 'Farm Expenses & Income tracks spending, earnings, categories, and profit trends by farm activity.'
+  },
+  {
+    key: 'harvest',
+    label: 'Harvest Management',
+    route: '/harvest',
+    intents: ['harvest', 'yield', 'storage', 'post harvest', 'ready'],
+    answer: 'Harvest Management helps monitor expected harvest dates, crop readiness, yield planning, and post-harvest actions.'
+  },
+  {
+    key: 'notifications',
+    label: 'Alerts & Reminders',
+    route: '/notifications',
+    intents: ['notification', 'reminder', 'alert', 'task', 'due'],
+    answer: 'Alerts & Reminders keeps time-sensitive farm tasks visible, including spray, irrigation, harvest, and scheme deadlines.'
+  },
+  {
+    key: 'reports',
+    label: 'Reports & Analytics',
+    route: '/reports',
+    intents: ['report', 'analytics', 'chart', 'performance', 'trend'],
+    answer: 'Reports & Analytics turns crop, expense, and farm records into performance insights and planning views.'
+  },
+  {
+    key: 'disease',
+    label: 'AI Disease & Pest Scanner',
+    route: null,
+    intents: ['disease', 'pest', 'leaf', 'spot', 'yellow', 'scan', 'photo', 'insect', 'ipm', 'blight', 'rust'],
+    answer: 'Use the chat upload button for crop or leaf photos. The assistant returns likely pest or disease, confidence, organic controls, and chemical options.'
+  },
+  {
+    key: 'weather',
+    label: 'Weather Monitoring',
+    route: null,
+    intents: ['weather', 'rain', 'temperature', 'humidity', 'wind', 'forecast', 'irrigation'],
+    answer: 'Weather Monitoring gives rainfall, humidity, wind, and spray or irrigation timing guidance.'
+  },
+  {
+    key: 'profile',
+    label: 'Profile',
+    route: '/profile',
+    intents: ['profile', 'location', 'village', 'district', 'state', 'phone'],
+    answer: 'Profile stores farmer identity, role, phone, village, district, state, and pincode so recommendations are local.'
+  }
+];
+
+const detectFeatures = (message = '') => {
+  const query = message.toLowerCase();
+  const matches = cropnovaFeatures
+    .map((feature) => ({
+      ...feature,
+      score: feature.intents.reduce((total, token) => total + (query.includes(token) ? 1 : 0), 0)
+    }))
+    .filter((feature) => feature.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (matches.length) return matches.slice(0, 3);
+  return cropnovaFeatures.filter((feature) => ['dashboard', 'crops', 'disease'].includes(feature.key));
+};
+
+const buildAgentReply = ({ message, userProfile, farms, crops, expenses }) => {
+  const query = (message || '').toLowerCase();
+  const matchedFeatures = detectFeatures(message);
+  const primary = matchedFeatures[0];
+  const farmCount = farms.length;
+  const activeCrops = crops.filter((crop) => crop.status !== 'Harvested').length;
+  const expenseTotal = expenses
+    .filter((entry) => String(entry.type || '').toLowerCase() !== 'income')
+    .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+  const incomeTotal = expenses
+    .filter((entry) => String(entry.type || '').toLowerCase() === 'income')
+    .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+  const location = userProfile?.village || userProfile?.district || userProfile?.state || userProfile?.location || 'your farm location';
+
+  const lines = [];
+  lines.push(`Krishimitra AI: ${primary.answer}`);
+
+  if (query.includes('all feature') || query.includes('features') || query.includes('what can') || query.includes('help')) {
+    lines.push('I can help with Cropnova features: dashboard overview, crop management, soil health, fertilizer dose, disease and pest scan, weather advice, marketplace, vendor inventory, expert consultation, government schemes, news, finance, harvest planning, alerts, reports, and profile guidance.');
+  }
+
+  if (userProfile) {
+    lines.push(`Your current context: ${userProfile.name || 'farmer'} in ${location}, with ${farmCount} farm(s), ${activeCrops} active crop(s), expenses of ₹${expenseTotal.toLocaleString('en-IN')}, and income of ₹${incomeTotal.toLocaleString('en-IN')}.`);
+  } else {
+    lines.push('Sign in to let me use your saved farms, crops, expenses, and location for personalized recommendations.');
+  }
+
+  if (primary.key === 'disease') {
+    lines.push('For a photo diagnosis, upload a clear image of the affected leaf or plant part. Until then: isolate the affected patch, avoid overhead irrigation, remove badly infected leaves, and prefer neem or biocontrol first for mild cases.');
+  } else if (primary.key === 'fertilizer') {
+    lines.push('For fertilizer planning, share crop name, acreage, soil type, pH, and growth stage. As a safe default, split nitrogen instead of applying all urea at once.');
+  } else if (primary.key === 'weather') {
+    lines.push('Avoid spraying before expected rain or high wind. Irrigate early morning or evening when heat stress is lower.');
+  } else if (primary.key === 'finance') {
+    const net = incomeTotal - expenseTotal;
+    lines.push(`Current recorded net position is ₹${net.toLocaleString('en-IN')}. Log each input, labor, machinery, and harvest sale to make reports more accurate.`);
+  } else if (primary.key === 'harvest') {
+    const nextCrop = crops.find((crop) => crop.expected_harvest_date && crop.status !== 'Harvested');
+    if (nextCrop) {
+      lines.push(`Next crop to watch: ${nextCrop.crop_name} on ${nextCrop.farm_name || 'your farm'}, expected around ${new Date(nextCrop.expected_harvest_date).toLocaleDateString('en-IN')}.`);
+    } else {
+      lines.push('Add expected harvest dates in Crop Management so I can surface readiness and storage reminders.');
+    }
+  } else if (primary.key === 'crops') {
+    lines.push('Best next step: keep every crop linked to a farm with sowing date, variety, field section, and expected harvest date. That powers harvest, finance, and reports.');
+  }
+
+  const related = matchedFeatures
+    .filter((feature) => feature.key !== primary.key)
+    .map((feature) => feature.route ? `${feature.label} (${feature.route})` : feature.label);
+  if (related.length) lines.push(`Related Cropnova tools: ${related.join(', ')}.`);
+  if (primary.route) lines.push(`Open ${primary.label}: ${primary.route}`);
+
+  return {
+    reply: lines.join('\n\n'),
+    feature: {
+      key: primary.key,
+      label: primary.label,
+      route: primary.route
+    },
+    suggestions: [
+      'Show my farm overview',
+      'Recommend crop and fertilizer plan',
+      'Diagnose pest or disease',
+      'Explain all Cropnova features'
+    ]
+  };
+};
+
 // ============================================================================
 // 1. Auth API
 // ============================================================================
@@ -33,7 +255,7 @@ app.post('/api/auth/register', async (req, res) => {
     try {
       newUser = await pool.query(
         'INSERT INTO users (name, email, password_hash, role, phone, location, village, district, state, pincode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, name, email, role, phone, location, village, district, state, pincode',
-        [name || 'New User', email, hash, role || 'farmer', phone || '', location || '', village || 'Village Rampur', district || 'Karnal', state || 'Haryana', pincode || '132001']
+        [name || 'New User', email, hash, role || 'farmer', phone || '', location || '', village || '', district || '', state || '', pincode || '']
       );
     } catch (e) {
       newUser = await pool.query(
@@ -107,18 +329,6 @@ app.put('/api/auth/profile', auth, async (req, res) => {
   }
 });
 
-// Middleware for auth
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'No token, authorization denied' });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (e) {
-    res.status(400).json({ error: 'Token is not valid' });
-  }
-};
 
 // ============================================================================
 // 2. Farmer Overview API
@@ -310,6 +520,90 @@ app.post('/api/disease/detect', (req, res) => {
     { name: 'Maize Leaf Blight (Helminthosporium)', confidence: 91.8, organic: 'Crop rotation and resistant seed selection.', chemical: 'Spray Zineb 75 WP at 2.5g/liter.' }
   ];
   res.json(sampleDiseases[Math.floor(Math.random() * sampleDiseases.length)]);
+});
+
+app.post('/api/agent/chat', optionalAuth, async (req, res) => {
+  const { message, userProfile: clientProfile } = req.body;
+
+  try {
+    let userProfile = clientProfile || null;
+    let farms = [];
+    let crops = [];
+    let expenses = [];
+
+    if (req.user?.id) {
+      const [userResult, farmsResult, cropsResult, expensesResult] = await Promise.all([
+        pool.query('SELECT id, name, email, role, phone, location, village, district, state, pincode FROM users WHERE id = $1', [req.user.id]).catch(() => ({ rows: [] })),
+        pool.query('SELECT * FROM farms WHERE user_id = $1', [req.user.id]).catch(() => ({ rows: [] })),
+        pool.query(`
+          SELECT c.*, f.name as farm_name
+          FROM crops c
+          JOIN farms f ON c.farm_id = f.id
+          WHERE f.user_id = $1
+          ORDER BY c.created_at DESC
+        `, [req.user.id]).catch(() => ({ rows: [] })),
+        pool.query('SELECT * FROM farm_expenses WHERE user_id = $1 ORDER BY transaction_date DESC', [req.user.id]).catch(() => ({ rows: [] }))
+      ]);
+
+      userProfile = userResult.rows[0] || clientProfile || null;
+      farms = farmsResult.rows;
+      crops = cropsResult.rows;
+      expenses = expensesResult.rows;
+    }
+
+    const matchedFeatures = detectFeatures(message);
+    const primary = matchedFeatures.length > 0 ? matchedFeatures[0] : null;
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.json(buildAgentReply({ message, userProfile, farms, crops, expenses }));
+    }
+
+    const systemPrompt = `You are Krishimitra, the AI agent for the Cropnova smart agriculture platform. Answer the farmer's queries helpfully using the following context about their farm:
+User: ${userProfile ? JSON.stringify(userProfile) : 'Guest (No profile data)'}
+Farms: ${JSON.stringify(farms)}
+Crops: ${JSON.stringify(crops)}
+Expenses: ${JSON.stringify(expenses)}
+Keep answers concise, actionable, and focused on agriculture. If the user is a guest, ask them to log in to get personalized advice. Format your responses with bullet points where appropriate for readability.`;
+
+    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      })
+    });
+
+    if (!openAiResponse.ok) {
+      console.error('OpenAI API Error:', await openAiResponse.text());
+      return res.json(buildAgentReply({ message, userProfile, farms, crops, expenses }));
+    }
+
+    const data = await openAiResponse.json();
+    const replyText = data.choices[0].message.content;
+
+    res.json({
+      reply: replyText,
+      feature: primary ? { key: primary.key, label: primary.label, route: primary.route } : null,
+      suggestions: [
+        'Show my farm overview',
+        'Recommend crop and fertilizer plan',
+        'Diagnose pest or disease',
+        'Explain all Cropnova features'
+      ]
+    });
+  } catch (err) {
+    console.error('Agent Error:', err);
+    res.status(500).json({ error: 'Cropnova agent failed: ' + err.message });
+  }
 });
 
 app.listen(PORT, () => {
