@@ -356,7 +356,7 @@ export const FarmerDashboard = () => {
       {/* 2. Real-Time Regional Weather Forecast Card */}
       {weather && (
         <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <CloudSun size={22} color="var(--primary)" />
               <h3 style={{ margin: 0 }}>Real-Time Regional Weather Forecast ({weather.location}) 🌤️</h3>
@@ -499,7 +499,7 @@ export const FarmerDashboard = () => {
       </div>
 
       {/* 4. Farmer Land & Soil Records */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2>Your Registered Land & Soil Information 🌾</h2>
           <p style={{ color: 'var(--text-secondary)' }}>Input your land plot acreage, soil category, pH level, and organic matter metrics.</p>
