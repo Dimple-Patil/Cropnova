@@ -22,10 +22,34 @@ const DashboardFeatureCard = ({ icon, title, value, detail, link, action, tone =
   </div>
 );
 
+const cropLabel = (crop) => crop?.crop_name || crop?.cropName || 'your crop';
+
+const irrigationAdvice = (cropName, source) => {
+  const crop = (cropName || '').toLowerCase();
+  const cropTip = crop.includes('rice') || crop.includes('paddy')
+    ? 'Use alternate wetting and drying to reduce water use.'
+    : crop.includes('wheat')
+      ? 'Prioritize irrigation at CRI, tillering, jointing, flowering, and grain-fill stages.'
+      : crop.includes('cotton')
+        ? 'Monitor moisture closely during flowering and boll development.'
+        : 'Irrigate at establishment, flowering, and grain-fill stages.';
+  return `${source || 'Your registered water source'}: ${cropTip}`;
+};
+
+const pestAdvice = (cropName) => {
+  const crop = (cropName || '').toLowerCase();
+  if (crop.includes('rice') || crop.includes('paddy')) return 'Watch for Brown Planthopper and rice blast.';
+  if (crop.includes('maize') || crop.includes('corn')) return 'Watch for Fall Armyworm and stem borer.';
+  if (crop.includes('cotton')) return 'Watch for Pink Bollworm and whitefly.';
+  if (crop.includes('wheat')) return 'Watch for leaf rust and aphids.';
+  return 'Select a crop to receive crop-specific pest guidance.';
+};
+
 export const FarmerDashboard = () => {
   const { user } = useAuth();
   
   const [farms, setFarms] = useState([]);
+  const [crops, setCrops] = useState([]);
   const [showAddFarmModal, setShowAddFarmModal] = useState(false);
   const [farmSaveSuccess, setFarmSaveSuccess] = useState('');
 
@@ -51,8 +75,19 @@ export const FarmerDashboard = () => {
 
   useEffect(() => {
     loadFarms();
+    loadCrops();
     loadRealTimeNews();
   }, []);
+
+  const loadCrops = async () => {
+    try {
+      const data = await api.get('/crops');
+      setCrops(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.warn('Could not load crop records for dashboard');
+      setCrops([]);
+    }
+  };
 
   // Sync regional weather & nearby soil labs whenever user location changes (from top right profile updates!)
   useEffect(() => {
@@ -278,6 +313,13 @@ export const FarmerDashboard = () => {
     ? newsList
     : newsList.filter(n => n.category === newsCategory);
 
+  const primaryCrop = crops.find(crop => (crop.status || 'Active').toLowerCase() !== 'harvested');
+  const matchingFarm = farms.find(farm => String(farm.id) === String(primaryCrop?.farm_id || primaryCrop?.farmId)) || farms[0];
+  const activeCropName = cropLabel(primaryCrop);
+  const registeredSource = primaryCrop?.irrigation_source || primaryCrop?.irrigationSource || matchingFarm?.irrigation_source || matchingFarm?.irrigationSource;
+  const cropHealthValue = primaryCrop ? `${activeCropName} monitoring` : 'No crop added yet';
+  const irrigationValue = primaryCrop ? `${activeCropName} plan` : 'No crop plan yet';
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
@@ -416,8 +458,8 @@ export const FarmerDashboard = () => {
           <DashboardFeatureCard
             icon={<Droplets size={23} />}
             title="Smart Irrigation"
-            value="45% moisture"
-            detail="Next watering is scheduled for tomorrow at 6:00 AM."
+            value={irrigationValue}
+            detail={primaryCrop ? irrigationAdvice(activeCropName, registeredSource) : 'Add a crop and irrigation source to generate a field-specific plan.'}
             link="/irrigation"
             action="View schedule"
             tone="#0288D1"
@@ -425,17 +467,17 @@ export const FarmerDashboard = () => {
           <DashboardFeatureCard
             icon={<Bug size={23} />}
             title="Crop Health"
-            value="Review crop risks"
-            detail="Check pest guidance or upload a leaf photo for diagnosis."
-            link="/pests"
+            value={cropHealthValue}
+            detail={primaryCrop ? pestAdvice(activeCropName) : 'Add a crop to see pest risks relevant to your farm.'}
+            link={primaryCrop ? `/pests?crop=${encodeURIComponent(activeCropName)}` : '/crops'}
             action="Check crop health"
             tone="var(--error)"
           />
           <DashboardFeatureCard
             icon={<Lightbulb size={23} />}
             title="Crop Recommendation"
-            value="AI field advice"
-            detail="Get crop suggestions based on your soil, season, and region."
+            value={primaryCrop ? `${activeCropName} profile` : 'Add farm details'}
+            detail={primaryCrop ? `Using ${matchingFarm?.soil_type || matchingFarm?.soilType || 'your registered soil'} and ${registeredSource || 'your farm inputs'}.` : 'Add farm and crop details to personalize recommendations.'}
             link="/recommendations"
             action="Get recommendations"
             tone="var(--accent)"

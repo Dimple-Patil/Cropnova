@@ -1,11 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Bug, ShieldCheck, AlertCircle, Info, Filter } from 'lucide-react';
+import { api } from '../utils/api';
 
 export const PestManagement = () => {
   const [pests, setPests] = useState([]);
   const [selectedCrop, setSelectedCrop] = useState('All');
+  const [farmerCrops, setFarmerCrops] = useState([]);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    api.get('/crops')
+      .then(data => setFarmerCrops(Array.isArray(data) ? data : []))
+      .catch(() => setFarmerCrops([]));
     fetch('/api/pests')
       .then(res => res.json())
       .then(d => setPests(d))
@@ -18,7 +25,16 @@ export const PestManagement = () => {
       });
   }, []);
 
+  useEffect(() => {
+    const requestedCrop = searchParams.get('crop');
+    if (requestedCrop && farmerCrops.some(crop => (crop.crop_name || crop.cropName) === requestedCrop)) {
+      setSelectedCrop(requestedCrop);
+    }
+  }, [farmerCrops, searchParams]);
+
   const filtered = selectedCrop === 'All' ? pests : pests.filter(p => p.crop === selectedCrop);
+  const farmerCropNames = [...new Set(farmerCrops.map(crop => crop.crop_name || crop.cropName).filter(Boolean))];
+  const availableCrops = farmerCropNames.length ? farmerCropNames : ['All'];
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -29,7 +45,7 @@ export const PestManagement = () => {
 
       {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: '0.8rem' }}>
-        {['All', 'Rice', 'Wheat', 'Maize', 'Cotton'].map(c => (
+        {['All', ...availableCrops.filter(crop => crop !== 'All')].map(c => (
           <button
             key={c}
             onClick={() => setSelectedCrop(c)}
@@ -43,6 +59,11 @@ export const PestManagement = () => {
 
       {/* Pest Cards */}
       <div className="grid-2">
+        {farmerCrops.length === 0 && (
+          <div className="card" style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)' }}>
+            Add an active crop in Crop Management to receive crop-specific pest guidance.
+          </div>
+        )}
         {filtered.map(pest => (
           <div key={pest.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
