@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 
 const buildReminders = crops => crops.flatMap(crop => {
-  const sowing = new Date(crop.sowing_date || crop.sowingDate);
-  if (Number.isNaN(sowing.getTime())) return [];
+  const sowingValue = crop.sowing_date || crop.sowingDate;
+  const parsedSowing = sowingValue ? new Date(sowingValue) : new Date();
+  const sowing = Number.isNaN(parsedSowing.getTime()) ? new Date() : parsedSowing;
   const cropName = crop.crop_name || crop.cropName || 'Crop';
   return [['irrigation', 'Irrigation check', 7], ['fertilizer', 'Fertilizer application', 21], ['pest', 'Pest inspection', 28]].map(([type, label, offset]) => {
     const due = new Date(sowing.getTime() + offset * 86400000);
