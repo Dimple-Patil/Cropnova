@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Droplet, Clock, CheckCircle2, Waves, Calendar } from 'lucide-react';
 import { api } from '../utils/api';
 
@@ -49,14 +50,41 @@ const irrigationRecommendation = (crop, farm) => {
 };
 
 export const SmartIrrigation = () => {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [wateringResponses, setWateringResponses] = useState({});
 
+  const storageKey = `cropnova-irrigation-${user?.id || 'guest'}`;
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      setWateringResponses(saved);
+    } catch {
+      setWateringResponses({});
+    }
+  }, [storageKey]);
+
   const recordWateringResponse = (schedule, answer) => {
-    setWateringResponses(previous => ({
-      ...previous,
-      [schedule.id]: { answer, recordedAt: new Date().toISOString() }
-    }));
+    const nextDate = answer === 'yes' ? followingWateringDate(schedule.cropName) : schedule.date;
+    const updated = {
+      ...wateringResponses,
+      [schedule.id]: {
+        answer,
+        scheduledDate: schedule.date,
+        nextDate,
+        recordedAt: new Date().toISOString()
+      }
+    };
+    setWateringResponses(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+
+    if (answer === 'yes') {
+      setData(previous => previous ? {
+        ...previous,
+        schedules: previous.schedules.map(item => item.id === schedule.id ? { ...item, date: nextDate } : item)
+      } : previous);
+    }
   };
 
   useEffect(() => {
@@ -65,16 +93,19 @@ export const SmartIrrigation = () => {
         const [farms, crops] = await Promise.all([api.get('/farms'), api.get('/crops')]);
         const activeCrops = (Array.isArray(crops) ? crops : [])
           .filter(crop => (crop.status || 'Active').toLowerCase() !== 'harvested');
+        const savedResponses = JSON.parse(localStorage.getItem(storageKey) || '{}');
         const schedules = activeCrops.map(crop => {
           const farm = (Array.isArray(farms) ? farms : []).find(item => String(item.id) === String(crop.farm_id));
           const recommendation = irrigationRecommendation(crop, farm);
+          const plannedDate = nextWateringDate(crop);
+          const saved = savedResponses[crop.id];
           return {
             id: crop.id,
             zone: `${crop.crop_name || 'Crop'}${crop.field_section ? ` - ${crop.field_section}` : ''}`,
             cropName: crop.crop_name || 'Crop',
             source: farm?.irrigation_source || 'Irrigation source not recorded',
             status: 'Active',
-            date: nextWateringDate(crop),
+            date: saved?.answer === 'yes' && saved.nextDate ? saved.nextDate : plannedDate,
             harvestDate: crop.expected_harvest_date || 'Harvest date not set',
             duration: `${wateringIntervalDays(crop.crop_name)}-day crop plan`,
             recommendation
