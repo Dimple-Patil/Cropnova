@@ -78,6 +78,12 @@ export const SmartIrrigation = () => {
     };
     setWateringResponses(updated);
     localStorage.setItem(storageKey, JSON.stringify(updated));
+    api.post('/irrigation/logs', {
+      cropId: schedule.id,
+      watered: answer === 'yes',
+      scheduledDate: schedule.date,
+      nextDate
+    }).catch(() => {});
 
     if (answer === 'yes') {
       setData(previous => previous ? {

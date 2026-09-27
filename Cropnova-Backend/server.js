@@ -36,6 +36,75 @@ const optionalAuth = (req, res, next) => {
   next();
 };
 
+// ============================================================================
+// Persistent calendar, irrigation, and notification activity
+// ============================================================================
+
+app.get('/api/calendar/tasks', auth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT task_id, status, updated_at FROM calendar_task_states WHERE user_id = $1', [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load calendar task states' });
+  }
+});
+
+app.put('/api/calendar/tasks/:taskId', auth, async (req, res) => {
+  const { status } = req.body;
+  if (!['done', 'skipped', 'later'].includes(status)) return res.status(400).json({ error: 'Invalid task status' });
+  try {
+    const result = await pool.query(`
+      INSERT INTO calendar_task_states (user_id, task_id, status)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, task_id) DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+      RETURNING task_id, status, updated_at
+    `, [req.user.id, req.params.taskId, status]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not save calendar task state' });
+  }
+});
+
+app.get('/api/irrigation/logs', auth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM irrigation_logs WHERE user_id = $1 ORDER BY recorded_at DESC', [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load irrigation logs' });
+  }
+});
+
+app.post('/api/irrigation/logs', auth, async (req, res) => {
+  const { cropId, watered, scheduledDate, nextDate } = req.body;
+  try {
+    const result = await pool.query(`
+      INSERT INTO irrigation_logs (user_id, crop_id, watered, scheduled_date, next_date)
+      VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `, [req.user.id, cropId, Boolean(watered), scheduledDate || null, nextDate || null]);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not save irrigation log' });
+  }
+});
+
+app.get('/api/notifications', auth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load notifications' });
+  }
+});
+
+app.put('/api/notifications/:id/read', auth, async (req, res) => {
+  try {
+    const result = await pool.query('UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2 RETURNING *', [req.params.id, req.user.id]);
+    res.json(result.rows[0] || { success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not update notification' });
+  }
+});
+
 const cropnovaFeatures = [
   {
     key: 'dashboard',

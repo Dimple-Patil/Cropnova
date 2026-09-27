@@ -48,6 +48,9 @@ export const CropCalendar = () => {
 
   useEffect(() => {
     api.get('/crops').then(data => setCrops(Array.isArray(data) ? data : [])).catch(() => setCrops([]));
+    api.get('/calendar/tasks').then(data => {
+      if (Array.isArray(data)) setTaskStates(Object.fromEntries(data.map(item => [item.task_id, item.status])));
+    }).catch(() => {});
     try {
       setTaskStates(JSON.parse(localStorage.getItem(storageKey) || '{}'));
     } catch {
@@ -64,6 +67,7 @@ export const CropCalendar = () => {
       localStorage.setItem(storageKey, JSON.stringify(updated));
       return updated;
     });
+    api.put(`/calendar/tasks/${encodeURIComponent(taskId)}`, { status }).catch(() => {});
   };
 
   const visibleTasks = tasks

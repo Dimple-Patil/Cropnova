@@ -134,3 +134,22 @@ CREATE TABLE IF NOT EXISTS notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS calendar_task_states (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    task_id VARCHAR(150) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, task_id)
+);
+
+CREATE TABLE IF NOT EXISTS irrigation_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    crop_id INT REFERENCES crops(id) ON DELETE CASCADE,
+    watered BOOLEAN NOT NULL,
+    scheduled_date DATE,
+    next_date DATE,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
