@@ -18,8 +18,8 @@ const dateOnly = value => {
 const formatDate = value => value.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const buildTasks = crops => crops.flatMap(crop => {
-  const sowing = dateOnly(crop.sowing_date);
-  const harvest = dateOnly(crop.expected_harvest_date);
+  const sowing = dateOnly(crop.sowing_date || crop.sowingDate);
+  const harvest = dateOnly(crop.expected_harvest_date || crop.expectedHarvestDate);
   if (!sowing) return [];
 
   const cropName = crop.crop_name || crop.cropName || 'Crop';

@@ -47,9 +47,10 @@ const pestAdvice = (cropName) => {
 
 const getUpcomingFarmTasks = (crops, taskStates = {}) => {
   const tasks = crops.flatMap(crop => {
-    if (!crop.sowing_date) return [];
+    const sowingValue = crop.sowing_date || crop.sowingDate;
+    if (!sowingValue) return [];
     const cropName = crop.crop_name || crop.cropName || 'Crop';
-    const sowingDate = new Date(crop.sowing_date);
+    const sowingDate = new Date(sowingValue);
     if (Number.isNaN(sowingDate.getTime())) return [];
     return [
       { id: `${crop.id}-irrigation`, label: 'Irrigation check', cropName, date: new Date(sowingDate.getTime() + 7 * 86400000) },
