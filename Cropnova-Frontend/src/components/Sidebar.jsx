@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Sprout, TestTube2,
   Bug, Droplet, DollarSign, ShoppingCart, MessageSquare,
-  Building2, Newspaper, Wallet, Wheat, ShieldAlert, BarChart3, UserCog, LogIn, Lock
+  Building2, Newspaper, Wallet, Wheat, ShieldAlert, BarChart3, UserCog, LogIn, Lock,
+  CloudSun, Lightbulb
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -63,6 +64,11 @@ export const Sidebar = () => {
     { title: 'Fertilizer Calculator', path: '/fertilizers', icon: DollarSign, roles: ['farmer', 'expert'] },
     { title: 'Farm Expenses & Income', path: '/finance', icon: Wallet, roles: ['farmer'] },
     { title: 'Harvest Management', path: '/harvest', icon: Wheat, roles: ['farmer'] },
+    { title: 'Weather Monitoring', path: '/weather', icon: CloudSun, roles: ['farmer', 'expert', 'vendor'] },
+    { title: 'Smart Irrigation', path: '/irrigation', icon: Droplet, roles: ['farmer'] },
+    { title: 'Crop Recommendations', path: '/recommendations', icon: Lightbulb, roles: ['farmer', 'expert'] },
+    { title: 'Disease Detection', path: '/disease-detection', icon: Bug, roles: ['farmer', 'expert'] },
+    { title: 'Pest Management', path: '/pests', icon: Bug, roles: ['farmer', 'expert'] },
 
     // Vendor-specific routes
     { title: 'Vendor Inventory & Sales', path: '/vendor', icon: ShoppingCart, roles: ['vendor'] },

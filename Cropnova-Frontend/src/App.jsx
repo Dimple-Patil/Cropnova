@@ -21,6 +21,11 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { ReportsAnalytics } from './pages/ReportsAnalytics';
 import { AdminPanel } from './pages/AdminPanel';
 import { ProfilePage } from './pages/ProfilePage';
+import { WeatherMonitoring } from './pages/WeatherMonitoring';
+import { SmartIrrigation } from './pages/SmartIrrigation';
+import { SmartRecommendation } from './pages/SmartRecommendation';
+import { PestManagement } from './pages/PestManagement';
+import { DiseaseDetection } from './pages/DiseaseDetection';
 
 // Protected Route Wrapper Enforcing Strict Role Access
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -65,6 +70,11 @@ export function App() {
             <Route path="/harvest" element={<ProtectedRoute allowedRoles={['farmer']}><HarvestManagement /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor']}><NotificationsPage /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute allowedRoles={['farmer']}><ReportsAnalytics /></ProtectedRoute>} />
+            <Route path="/weather" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor']}><WeatherMonitoring /></ProtectedRoute>} />
+            <Route path="/irrigation" element={<ProtectedRoute allowedRoles={['farmer']}><SmartIrrigation /></ProtectedRoute>} />
+            <Route path="/recommendations" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><SmartRecommendation /></ProtectedRoute>} />
+            <Route path="/pests" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><PestManagement /></ProtectedRoute>} />
+            <Route path="/disease-detection" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><DiseaseDetection /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor', 'admin']}><ProfilePage /></ProtectedRoute>} />
           </Routes>
