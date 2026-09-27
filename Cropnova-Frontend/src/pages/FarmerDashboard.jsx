@@ -45,7 +45,7 @@ const pestAdvice = (cropName) => {
   return 'Select a crop to receive crop-specific pest guidance.';
 };
 
-const getUpcomingFarmTasks = (crops) => {
+const getUpcomingFarmTasks = (crops, taskStates = {}) => {
   const tasks = crops.flatMap(crop => {
     if (!crop.sowing_date) return [];
     const cropName = crop.crop_name || crop.cropName || 'Crop';
@@ -57,7 +57,10 @@ const getUpcomingFarmTasks = (crops) => {
       { id: `${crop.id}-pest`, label: 'Pest inspection', cropName, date: new Date(sowingDate.getTime() + 28 * 86400000) }
     ];
   });
-  return tasks.sort((a, b) => a.date - b.date).slice(0, 3);
+  return tasks
+    .filter(task => taskStates[task.id] !== 'done' && taskStates[task.id] !== 'skipped')
+    .sort((a, b) => a.date - b.date)
+    .slice(0, 3);
 };
 
 export const FarmerDashboard = () => {
@@ -65,6 +68,7 @@ export const FarmerDashboard = () => {
   
   const [farms, setFarms] = useState([]);
   const [crops, setCrops] = useState([]);
+  const [calendarTaskStates, setCalendarTaskStates] = useState({});
   const [showAddFarmModal, setShowAddFarmModal] = useState(false);
   const [farmSaveSuccess, setFarmSaveSuccess] = useState('');
 
@@ -92,7 +96,12 @@ export const FarmerDashboard = () => {
     loadFarms();
     loadCrops();
     loadRealTimeNews();
-  }, []);
+    try {
+      setCalendarTaskStates(JSON.parse(localStorage.getItem(`cropnova-calendar-${user?.id || 'guest'}`) || '{}'));
+    } catch {
+      setCalendarTaskStates({});
+    }
+  }, [user?.id]);
 
   const loadCrops = async () => {
     try {
@@ -334,7 +343,7 @@ export const FarmerDashboard = () => {
   const registeredSource = primaryCrop?.irrigation_source || primaryCrop?.irrigationSource || matchingFarm?.irrigation_source || matchingFarm?.irrigationSource;
   const cropHealthValue = primaryCrop ? `${activeCropName} monitoring` : 'No crop added yet';
   const irrigationValue = primaryCrop ? `${activeCropName} plan` : 'No crop plan yet';
-  const upcomingFarmTasks = getUpcomingFarmTasks(crops);
+  const upcomingFarmTasks = getUpcomingFarmTasks(crops, calendarTaskStates);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

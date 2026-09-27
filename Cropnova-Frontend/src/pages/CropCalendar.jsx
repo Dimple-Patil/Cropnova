@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { CalendarDays, CheckCircle2, Clock3, Droplets, FlaskConical, Bug, Wheat } from 'lucide-react';
 import { api } from '../utils/api';
 
@@ -40,18 +41,29 @@ const buildTasks = crops => crops.flatMap(crop => {
 });
 
 export const CropCalendar = () => {
+  const { user } = useAuth();
   const [crops, setCrops] = useState([]);
   const [taskStates, setTaskStates] = useState({});
+  const storageKey = `cropnova-calendar-${user?.id || 'guest'}`;
 
   useEffect(() => {
     api.get('/crops').then(data => setCrops(Array.isArray(data) ? data : [])).catch(() => setCrops([]));
-  }, []);
+    try {
+      setTaskStates(JSON.parse(localStorage.getItem(storageKey) || '{}'));
+    } catch {
+      setTaskStates({});
+    }
+  }, [storageKey]);
 
   const tasks = useMemo(() => buildTasks(crops), [crops]);
   const today = dateOnly(new Date());
 
   const updateTask = (taskId, status) => {
-    setTaskStates(previous => ({ ...previous, [taskId]: status }));
+    setTaskStates(previous => {
+      const updated = { ...previous, [taskId]: status };
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const visibleTasks = tasks
