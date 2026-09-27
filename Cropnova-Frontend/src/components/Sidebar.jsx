@@ -63,7 +63,7 @@ export const Sidebar = () => {
     { title: 'Soil Analysis & Health', path: '/soil', icon: TestTube2, roles: ['farmer', 'expert'] },
     { title: 'Fertilizer Calculator', path: '/fertilizers', icon: DollarSign, roles: ['farmer', 'expert'] },
     { title: 'Farm Expenses & Income', path: '/finance', icon: Wallet, roles: ['farmer'] },
-    { title: 'Harvest Management', path: '/harvest', icon: Wheat, roles: ['farmer'] },
+    { title: 'Profitability & Prices', path: '/profitability', icon: BarChart3, roles: ['farmer'] },
     { title: 'Weather Monitoring', path: '/weather', icon: CloudSun, roles: ['farmer', 'expert', 'vendor'] },
     { title: 'Smart Irrigation', path: '/irrigation', icon: Droplet, roles: ['farmer'] },
     { title: 'Crop Recommendations', path: '/recommendations', icon: Lightbulb, roles: ['farmer', 'expert'] },

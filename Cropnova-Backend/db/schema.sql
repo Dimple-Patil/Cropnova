@@ -153,3 +153,21 @@ CREATE TABLE IF NOT EXISTS irrigation_logs (
     next_date DATE,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS crop_market_prices (
+    id SERIAL PRIMARY KEY,
+    crop_key VARCHAR(50) UNIQUE NOT NULL,
+    crop_name VARCHAR(100) NOT NULL,
+    price_per_quintal DECIMAL(10,2) NOT NULL,
+    yield_per_acre DECIMAL(10,2) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO crop_market_prices (crop_key, crop_name, price_per_quintal, yield_per_acre)
+VALUES
+  ('rice', 'Rice', 2183, 28),
+  ('wheat', 'Wheat', 2275, 22),
+  ('cotton', 'Cotton', 6620, 15),
+  ('maize', 'Maize', 2090, 25),
+  ('mustard', 'Mustard', 5650, 12)
+ON CONFLICT (crop_key) DO NOTHING;

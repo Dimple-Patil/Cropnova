@@ -105,6 +105,15 @@ app.put('/api/notifications/:id/read', auth, async (req, res) => {
   }
 });
 
+app.get('/api/market/prices', auth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT crop_key, crop_name, price_per_quintal, yield_per_acre, updated_at FROM crop_market_prices ORDER BY crop_name');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load market prices' });
+  }
+});
+
 const cropnovaFeatures = [
   {
     key: 'dashboard',
