@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   MapPin, Sun, CloudSun, CloudRain, Droplets, Wind, Plus, Trash2, TestTube2,
   Newspaper, ExternalLink, RefreshCw, Info, Calendar, TrendingUp, AlertCircle, X, CheckCircle2, Phone, DollarSign,
-  Bug, Lightbulb
+  Bug, Lightbulb, CalendarDays
 } from 'lucide-react';
 import { api } from '../utils/api';
 
@@ -43,6 +43,21 @@ const pestAdvice = (cropName) => {
   if (crop.includes('cotton')) return 'Watch for Pink Bollworm and whitefly.';
   if (crop.includes('wheat')) return 'Watch for leaf rust and aphids.';
   return 'Select a crop to receive crop-specific pest guidance.';
+};
+
+const getUpcomingFarmTasks = (crops) => {
+  const tasks = crops.flatMap(crop => {
+    if (!crop.sowing_date) return [];
+    const cropName = crop.crop_name || crop.cropName || 'Crop';
+    const sowingDate = new Date(crop.sowing_date);
+    if (Number.isNaN(sowingDate.getTime())) return [];
+    return [
+      { id: `${crop.id}-irrigation`, label: 'Irrigation check', cropName, date: new Date(sowingDate.getTime() + 7 * 86400000) },
+      { id: `${crop.id}-fertilizer`, label: 'Fertilizer application', cropName, date: new Date(sowingDate.getTime() + 21 * 86400000) },
+      { id: `${crop.id}-pest`, label: 'Pest inspection', cropName, date: new Date(sowingDate.getTime() + 28 * 86400000) }
+    ];
+  });
+  return tasks.sort((a, b) => a.date - b.date).slice(0, 3);
 };
 
 export const FarmerDashboard = () => {
@@ -319,6 +334,7 @@ export const FarmerDashboard = () => {
   const registeredSource = primaryCrop?.irrigation_source || primaryCrop?.irrigationSource || matchingFarm?.irrigation_source || matchingFarm?.irrigationSource;
   const cropHealthValue = primaryCrop ? `${activeCropName} monitoring` : 'No crop added yet';
   const irrigationValue = primaryCrop ? `${activeCropName} plan` : 'No crop plan yet';
+  const upcomingFarmTasks = getUpcomingFarmTasks(crops);
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -491,6 +507,37 @@ export const FarmerDashboard = () => {
             Review pest management
           </Link>
         </div>
+      </div>
+
+      <div className="card" style={{ borderLeft: '4px solid var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <CalendarDays size={22} color="var(--primary)" />
+            <div>
+              <h3 style={{ margin: 0 }}>Upcoming Farm Tasks</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0.25rem 0 0' }}>Your next crop-care activities</p>
+            </div>
+          </div>
+          <Link to="/calendar" className="btn btn-secondary" style={{ textDecoration: 'none', fontSize: '0.8rem' }}>View full calendar</Link>
+        </div>
+
+        {upcomingFarmTasks.length === 0 ? (
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', paddingTop: '1rem' }}>
+            Add a crop with a sowing date to generate upcoming tasks.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '1rem' }}>
+            {upcomingFarmTasks.map(task => (
+              <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.7rem 0.8rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap' }}>
+                <div>
+                  <strong>{task.label}</strong>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{task.cropName}</div>
+                </div>
+                <span className="badge badge-primary">{task.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 3. TWO CARDS BELOW WEATHER FORECAST: 1st Card News | 2nd Card Soil Testing Labs */}
