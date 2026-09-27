@@ -9,6 +9,15 @@ export const PestManagement = () => {
   const [farmerCrops, setFarmerCrops] = useState([]);
   const [searchParams] = useSearchParams();
 
+  const cropKey = (name) => {
+    const value = (name || '').toLowerCase();
+    if (value.includes('rice') || value.includes('paddy')) return 'rice';
+    if (value.includes('maize') || value.includes('corn')) return 'maize';
+    if (value.includes('cotton')) return 'cotton';
+    if (value.includes('wheat')) return 'wheat';
+    return value.trim();
+  };
+
   useEffect(() => {
     api.get('/crops')
       .then(data => setFarmerCrops(Array.isArray(data) ? data : []))
@@ -27,14 +36,22 @@ export const PestManagement = () => {
 
   useEffect(() => {
     const requestedCrop = searchParams.get('crop');
-    if (requestedCrop && farmerCrops.some(crop => (crop.crop_name || crop.cropName) === requestedCrop)) {
-      setSelectedCrop(requestedCrop);
+    const farmerCropNames = farmerCrops.map(crop => crop.crop_name || crop.cropName).filter(Boolean);
+    const matchingCrop = farmerCropNames.find(name => cropKey(name) === cropKey(requestedCrop));
+    if (matchingCrop) {
+      setSelectedCrop(matchingCrop);
+    } else if (farmerCropNames.length === 1) {
+      setSelectedCrop(farmerCropNames[0]);
     }
   }, [farmerCrops, searchParams]);
 
-  const filtered = selectedCrop === 'All' ? pests : pests.filter(p => p.crop === selectedCrop);
   const farmerCropNames = [...new Set(farmerCrops.map(crop => crop.crop_name || crop.cropName).filter(Boolean))];
   const availableCrops = farmerCropNames.length ? farmerCropNames : ['All'];
+  const farmerCropKeys = new Set(farmerCropNames.map(cropKey));
+  const filtered = pests.filter(pest => {
+    if (selectedCrop !== 'All') return cropKey(pest.crop) === cropKey(selectedCrop);
+    return farmerCropKeys.size === 0 || farmerCropKeys.has(cropKey(pest.crop));
+  });
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -62,6 +79,11 @@ export const PestManagement = () => {
         {farmerCrops.length === 0 && (
           <div className="card" style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)' }}>
             Add an active crop in Crop Management to receive crop-specific pest guidance.
+          </div>
+        )}
+        {farmerCrops.length > 0 && filtered.length === 0 && (
+          <div className="card" style={{ gridColumn: '1 / -1', color: 'var(--text-secondary)' }}>
+            No pest guide is available yet for {selectedCrop}. Add another crop or choose a supported crop guide.
           </div>
         )}
         {filtered.map(pest => (
