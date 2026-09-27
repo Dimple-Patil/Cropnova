@@ -26,6 +26,7 @@ import { SmartIrrigation } from './pages/SmartIrrigation';
 import { SmartRecommendation } from './pages/SmartRecommendation';
 import { PestManagement } from './pages/PestManagement';
 import { DiseaseDetection } from './pages/DiseaseDetection';
+import { CropCalendar } from './pages/CropCalendar';
 
 // Protected Route Wrapper Enforcing Strict Role Access
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -75,6 +76,7 @@ export function App() {
             <Route path="/recommendations" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><SmartRecommendation /></ProtectedRoute>} />
             <Route path="/pests" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><PestManagement /></ProtectedRoute>} />
             <Route path="/disease-detection" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><DiseaseDetection /></ProtectedRoute>} />
+            <Route path="/calendar" element={<ProtectedRoute allowedRoles={['farmer']}><CropCalendar /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor', 'admin']}><ProfilePage /></ProtectedRoute>} />
           </Routes>

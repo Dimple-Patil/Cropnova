@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Sprout, TestTube2,
   Bug, Droplet, DollarSign, ShoppingCart, MessageSquare,
   Building2, Newspaper, Wallet, Wheat, ShieldAlert, BarChart3, UserCog, LogIn, Lock,
-  CloudSun, Lightbulb
+  CloudSun, Lightbulb, CalendarDays
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -69,6 +69,7 @@ export const Sidebar = () => {
     { title: 'Crop Recommendations', path: '/recommendations', icon: Lightbulb, roles: ['farmer', 'expert'] },
     { title: 'Disease Detection', path: '/disease-detection', icon: Bug, roles: ['farmer', 'expert'] },
     { title: 'Pest Management', path: '/pests', icon: Bug, roles: ['farmer', 'expert'] },
+    { title: 'Farming Calendar', path: '/calendar', icon: CalendarDays, roles: ['farmer'] },
 
     // Vendor-specific routes
     { title: 'Vendor Inventory & Sales', path: '/vendor', icon: ShoppingCart, roles: ['vendor'] },
