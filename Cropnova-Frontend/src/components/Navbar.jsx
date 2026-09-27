@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -12,6 +12,22 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const loadUnread = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`cropnova-notifications-${user.id}`) || '{}');
+        setUnreadNotifications(Object.values(saved).filter(alert => !alert.isRead).length);
+      } catch {
+        setUnreadNotifications(0);
+      }
+    };
+    loadUnread();
+    window.addEventListener('storage', loadUnread);
+    return () => window.removeEventListener('storage', loadUnread);
+  }, [user?.id]);
 
   // Role-based horizontal navbar items (NEWS REMOVED FROM NAVBAR AS REQUESTED)
   const getNavItems = () => {
@@ -145,9 +161,9 @@ export const Navbar = () => {
             <>
               <Link to="/notifications" style={{ position: 'relative', color: 'var(--text-primary)', textDecoration: 'none', padding: '0.3rem' }} title="Notifications">
                 <Bell size={20} />
-                <span style={{
+                {unreadNotifications > 0 && <span style={{
                   position: 'absolute', top: '-2px', right: '-2px', background: 'var(--error)', color: '#fff', fontSize: '0.6rem', fontWeight: 'bold', borderRadius: '50%', width: '15px', height: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>2</span>
+                }}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
               </Link>
 
               {/* Clickable User Name Badge Trigger for Profile & Location Details in Top Right Corner */}

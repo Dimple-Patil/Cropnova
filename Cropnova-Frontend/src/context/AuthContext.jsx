@@ -16,7 +16,6 @@ const loadSession = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUserRaw]          = useState(() => loadSession());
   const [theme, setTheme]           = useState('light');
-  const [pendingOtpUser, setPendingOtpUser] = useState(null);
 
   // Sync user to localStorage on every change
   const setUser = (u) => {
@@ -53,27 +52,12 @@ export const AuthProvider = ({ children }) => {
   const registerUser = async (userData) => {
     try {
       const res = await api.post('/auth/register', userData);
-      
-      const pending = { ...res.user, token: res.token, otpCode: '123456' };
-      setPendingOtpUser(pending);
-      return { success: true, requiresOtp: true };
+      setUser({ ...res.user, token: res.token, isVerified: true });
+      return { success: true };
     } catch (err) {
       console.error(err);
       return { success: false, error: err.message };
     }
-  };
-
-  const verifyOtp = (enteredOtp) => {
-    if (pendingOtpUser && (enteredOtp === pendingOtpUser.otpCode || enteredOtp === '123456')) {
-      const verifiedUser = {
-        ...pendingOtpUser,
-        isVerified: true
-      };
-      setUser(verifiedUser);
-      setPendingOtpUser(null);
-      return true;
-    }
-    return false;
   };
 
   const login = async (email, password) => {
@@ -96,11 +80,10 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    setPendingOtpUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, registerUser, verifyOtp, pendingOtpUser, updateUserProfile, login, logout, theme, toggleTheme }}>
+    <AuthContext.Provider value={{ user, registerUser, updateUserProfile, login, logout, theme, toggleTheme }}>
       {children}
     </AuthContext.Provider>
   );
