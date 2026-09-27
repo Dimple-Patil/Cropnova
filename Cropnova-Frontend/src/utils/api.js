@@ -4,7 +4,7 @@ export const setApiToken = (token) => {
   memoryToken = token;
 };
 
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const getToken = () => {
   return memoryToken;
@@ -16,7 +16,7 @@ const request = async (endpoint, options = {}) => {
     'Content-Type': 'application/json',
     ...options.headers,
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
