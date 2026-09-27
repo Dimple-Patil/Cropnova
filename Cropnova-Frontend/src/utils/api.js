@@ -4,7 +4,10 @@ export const setApiToken = (token) => {
   memoryToken = token;
 };
 
-const BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const BASE_URL = configuredApiUrl
+  ? `${configuredApiUrl.replace(/\/$/, '')}${configuredApiUrl.replace(/\/$/, '').endsWith('/api') ? '' : '/api'}`
+  : '/api';
 
 const getToken = () => {
   return memoryToken;
