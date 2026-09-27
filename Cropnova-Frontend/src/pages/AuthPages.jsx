@@ -40,9 +40,7 @@ export const AuthPages = () => {
   return (
     <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', padding: '1rem' }}>
       <div className="card" style={{ width: '100%', maxWidth: '480px', padding: '2.5rem' }}>
-        <>
-          <>
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.8rem', color: 'var(--primary)' }}>
                 {isLoginMode ? 'Welcome Back to CropNova 🌾' : 'Create Your CropNova Account 🚀'}
               </h2>
@@ -137,7 +135,6 @@ export const AuthPages = () => {
                 {isLoginMode ? 'Sign Up Now' : 'Log In Here'}
               </button>
             </div>
-        </>
       </div>
     </div>
   );
