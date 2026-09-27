@@ -27,6 +27,27 @@ const followingWateringDate = (cropName) => {
   return next.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const irrigationRecommendation = (crop, farm) => {
+  const name = (crop?.crop_name || '').toLowerCase();
+  const acres = Number(crop?.acreage || crop?.area_acres || farm?.size_acres || 1);
+  if (name.includes('rice') || name.includes('paddy')) {
+    return { amount: `${(acres * 18000).toLocaleString('en-IN')} L per watering`, method: 'Alternate wetting and drying', detail: 'Use shallow flooding only when the soil surface dries; avoid continuous standing water.' };
+  }
+  if (name.includes('wheat')) {
+    return { amount: `${(acres * 5000).toLocaleString('en-IN')} L per watering`, method: 'Furrow or sprinkler irrigation', detail: 'Apply evenly at the CRI, tillering, flowering, and grain-fill stages.' };
+  }
+  if (name.includes('cotton')) {
+    return { amount: `${(acres * 7000).toLocaleString('en-IN')} L per watering`, method: 'Drip irrigation', detail: 'Deliver water slowly near the root zone, especially during flowering and boll development.' };
+  }
+  if (name.includes('maize') || name.includes('corn')) {
+    return { amount: `${(acres * 6000).toLocaleString('en-IN')} L per watering`, method: 'Furrow or drip irrigation', detail: 'Prioritize knee-high, tasseling, and silking stages; avoid waterlogging.' };
+  }
+  if (name.includes('mustard')) {
+    return { amount: `${(acres * 3500).toLocaleString('en-IN')} L per watering`, method: 'Sprinkler irrigation', detail: 'Use light irrigation at branching, flowering, and pod-filling stages.' };
+  }
+  return { amount: `${(acres * 5000).toLocaleString('en-IN')} L per watering`, method: 'Drip or sprinkler irrigation', detail: 'Apply gradually at establishment, flowering, and grain-filling stages.' };
+};
+
 export const SmartIrrigation = () => {
   const [data, setData] = useState(null);
   const [wateringResponses, setWateringResponses] = useState({});
@@ -46,6 +67,7 @@ export const SmartIrrigation = () => {
           .filter(crop => (crop.status || 'Active').toLowerCase() !== 'harvested');
         const schedules = activeCrops.map(crop => {
           const farm = (Array.isArray(farms) ? farms : []).find(item => String(item.id) === String(crop.farm_id));
+          const recommendation = irrigationRecommendation(crop, farm);
           return {
             id: crop.id,
             zone: `${crop.crop_name || 'Crop'}${crop.field_section ? ` - ${crop.field_section}` : ''}`,
@@ -54,7 +76,8 @@ export const SmartIrrigation = () => {
             status: 'Active',
             date: nextWateringDate(crop),
             harvestDate: crop.expected_harvest_date || 'Harvest date not set',
-            duration: `${wateringIntervalDays(crop.crop_name)}-day crop plan`
+            duration: `${wateringIntervalDays(crop.crop_name)}-day crop plan`,
+            recommendation
           };
         });
         setData({ farms: Array.isArray(farms) ? farms : [], crops: activeCrops, schedules });
@@ -76,12 +99,12 @@ export const SmartIrrigation = () => {
         <>
           <div className="grid-3">
             <div className="card" style={{ borderLeft: '4px solid #0288D1' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600' }}>SOIL MOISTURE TELEMETRY</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600' }}>RECOMMENDED WATERING</div>
               <div style={{ fontSize: '1.1rem', fontWeight: '800', margin: '0.4rem 0', color: '#0288D1' }}>
-                {data.crops.length ? 'Sensor not connected' : 'Add an active crop'}
+                {data.schedules[0]?.recommendation.amount || 'Add an active crop'}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                Live percentage requires a soil-moisture sensor reading.
+                {data.schedules[0]?.recommendation.method || 'Crop-specific guidance will appear here.'}
               </div>
             </div>
 
@@ -122,6 +145,8 @@ export const SmartIrrigation = () => {
                     <div style={{ fontWeight: '700' }}>{sch.zone}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Next watering: {sch.date} • {sch.duration}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Water source: {sch.source} • Harvest: {sch.harvestDate}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '0.35rem' }}>{sch.recommendation.amount} • {sch.recommendation.method}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{sch.recommendation.detail}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {wateringResponses[sch.id] ? (
