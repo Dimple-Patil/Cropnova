@@ -1,10 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import {
   MapPin, Sun, CloudSun, CloudRain, Droplets, Wind, Plus, Trash2, TestTube2,
-  Newspaper, ExternalLink, RefreshCw, Info, Calendar, TrendingUp, AlertCircle, X, CheckCircle2, Phone, DollarSign
+  Newspaper, ExternalLink, RefreshCw, Info, Calendar, TrendingUp, AlertCircle, X, CheckCircle2, Phone, DollarSign,
+  Bug, Lightbulb
 } from 'lucide-react';
 import { api } from '../utils/api';
+
+const DashboardFeatureCard = ({ icon, title, value, detail, link, action, tone = 'var(--primary)' }) => (
+  <div className="card" style={{ borderLeft: `4px solid ${tone}`, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+      <span style={{ color: tone, display: 'flex' }}>{icon}</span>
+      <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{title}</h3>
+    </div>
+    <div style={{ fontSize: '1.35rem', fontWeight: '800', marginTop: '1rem' }}>{value}</div>
+    <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '0.35rem 0 1rem', flex: 1 }}>{detail}</p>
+    <Link to={link} className="btn btn-secondary" style={{ alignSelf: 'flex-start', textDecoration: 'none', fontSize: '0.8rem' }}>
+      {action}
+    </Link>
+  </div>
+);
 
 export const FarmerDashboard = () => {
   const { user } = useAuth();
@@ -382,8 +398,58 @@ export const FarmerDashboard = () => {
               <div style={{ fontSize: '1.6rem', fontWeight: '800' }}>{weather.rainfallProbPct}%</div>
             </div>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.9rem' }}>
+            <Link to="/weather" className="btn btn-secondary" style={{ textDecoration: 'none', fontSize: '0.8rem' }}>
+              View full forecast
+            </Link>
+          </div>
         </div>
       )}
+
+      {/* Farm Intelligence: at-a-glance status with links to full modules */}
+      <div>
+        <div style={{ marginBottom: '0.8rem' }}>
+          <h2 style={{ marginBottom: '0.2rem' }}>Farm Intelligence</h2>
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Quick actions and recommendations for today’s field work.</p>
+        </div>
+        <div className="grid-3">
+          <DashboardFeatureCard
+            icon={<Droplets size={23} />}
+            title="Smart Irrigation"
+            value="45% moisture"
+            detail="Next watering is scheduled for tomorrow at 6:00 AM."
+            link="/irrigation"
+            action="View schedule"
+            tone="#0288D1"
+          />
+          <DashboardFeatureCard
+            icon={<Bug size={23} />}
+            title="Crop Health"
+            value="Review crop risks"
+            detail="Check pest guidance or upload a leaf photo for diagnosis."
+            link="/pests"
+            action="Check crop health"
+            tone="var(--error)"
+          />
+          <DashboardFeatureCard
+            icon={<Lightbulb size={23} />}
+            title="Crop Recommendation"
+            value="AI field advice"
+            detail="Get crop suggestions based on your soil, season, and region."
+            link="/recommendations"
+            action="Get recommendations"
+            tone="var(--accent)"
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.9rem' }}>
+          <Link to="/disease-detection" className="btn btn-primary" style={{ textDecoration: 'none' }}>
+            <Bug size={17} /> Scan crop photo
+          </Link>
+          <Link to="/pests" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            Review pest management
+          </Link>
+        </div>
+      </div>
 
       {/* 3. TWO CARDS BELOW WEATHER FORECAST: 1st Card News | 2nd Card Soil Testing Labs */}
       <div className="grid-2" style={{ alignItems: 'stretch' }}>
