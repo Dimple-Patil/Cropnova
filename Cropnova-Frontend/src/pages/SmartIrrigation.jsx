@@ -21,8 +21,22 @@ const nextWateringDate = (crop) => {
   return next.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const followingWateringDate = (cropName) => {
+  const next = new Date();
+  next.setDate(next.getDate() + wateringIntervalDays(cropName));
+  return next.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 export const SmartIrrigation = () => {
   const [data, setData] = useState(null);
+  const [wateringResponses, setWateringResponses] = useState({});
+
+  const recordWateringResponse = (schedule, answer) => {
+    setWateringResponses(previous => ({
+      ...previous,
+      [schedule.id]: { answer, recordedAt: new Date().toISOString() }
+    }));
+  };
 
   useEffect(() => {
     const loadIrrigationData = async () => {
@@ -35,6 +49,7 @@ export const SmartIrrigation = () => {
           return {
             id: crop.id,
             zone: `${crop.crop_name || 'Crop'}${crop.field_section ? ` - ${crop.field_section}` : ''}`,
+            cropName: crop.crop_name || 'Crop',
             source: farm?.irrigation_source || 'Irrigation source not recorded',
             status: 'Active',
             date: nextWateringDate(crop),
@@ -83,10 +98,12 @@ export const SmartIrrigation = () => {
             <div className="card" style={{ borderLeft: '4px solid var(--success)' }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: '600' }}>WATER SAVED THIS MONTH</div>
               <div style={{ fontSize: '1.1rem', fontWeight: '800', margin: '0.4rem 0', color: 'var(--success)' }}>
-                No savings logged
+                {Object.values(wateringResponses).filter(item => item.answer === 'yes').length
+                  ? `${Object.values(wateringResponses).filter(item => item.answer === 'yes').length} watering recorded`
+                  : 'No watering recorded'}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                Add irrigation history to calculate monthly savings.
+                Confirmed events will build your irrigation history.
               </div>
             </div>
           </div>
@@ -100,13 +117,36 @@ export const SmartIrrigation = () => {
                 </div>
               )}
               {data.schedules.map(sch => (
-                <div key={sch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', background: 'var(--bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div key={sch.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '0.8rem 1rem', background: 'var(--bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
                   <div>
                     <div style={{ fontWeight: '700' }}>{sch.zone}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Next watering: {sch.date} • {sch.duration}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Water source: {sch.source} • Harvest: {sch.harvestDate}</div>
                   </div>
-                  <span className="badge badge-primary">{sch.status}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {wateringResponses[sch.id] ? (
+                      <div style={{ textAlign: 'right' }}>
+                        <span className={`badge ${wateringResponses[sch.id].answer === 'yes' ? 'badge-success' : 'badge-warning'}`}>
+                          {wateringResponses[sch.id].answer === 'yes' ? 'Watering recorded' : 'Follow-up needed'}
+                        </span>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.35rem' }}>
+                          {wateringResponses[sch.id].answer === 'yes'
+                            ? `Next cycle: ${followingWateringDate(sch.cropName)}`
+                            : 'Inspect the field and try again later'}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: '0.78rem', fontWeight: '700' }}>Watered?</span>
+                        <button type="button" className="btn btn-primary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }} onClick={() => recordWateringResponse(sch, 'yes')}>
+                          Yes
+                        </button>
+                        <button type="button" className="btn btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }} onClick={() => recordWateringResponse(sch, 'no')}>
+                          No
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
