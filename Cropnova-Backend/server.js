@@ -8,6 +8,7 @@ const pool = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'cropnova_super_secret_key_2026';
+const mandiDailyCache = new Map();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -108,6 +109,10 @@ app.put('/api/notifications/:id/read', auth, async (req, res) => {
 app.get('/api/market/prices', auth, async (req, res) => {
   try {
     const { crop, state, district } = req.query;
+    const cacheKey = JSON.stringify({ crop: crop || '', state: state || '', district: district || '' });
+    const today = new Date().toISOString().slice(0, 10);
+    const cached = mandiDailyCache.get(cacheKey);
+    if (cached?.date === today) return res.json({ ...cached.payload, cached: true });
     const apiKey = process.env.DATA_GOV_API_KEY;
     const resourceId = process.env.MANDI_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
     if (apiKey && resourceId) {
@@ -118,11 +123,17 @@ app.get('/api/market/prices', auth, async (req, res) => {
       const liveResponse = await fetch(`https://api.data.gov.in/resource/${resourceId}?${params.toString()}`);
       if (liveResponse.ok) {
         const live = await liveResponse.json();
-        if (Array.isArray(live.records) && live.records.length) return res.json({ source: 'data.gov.in', records: live.records });
+        if (Array.isArray(live.records) && live.records.length) {
+          const payload = { source: 'data.gov.in', records: live.records, fetched_at: new Date().toISOString() };
+          mandiDailyCache.set(cacheKey, { date: today, payload });
+          return res.json(payload);
+        }
       }
     }
     const result = await pool.query('SELECT crop_key, crop_name, price_per_quintal, yield_per_acre, updated_at FROM crop_market_prices ORDER BY crop_name');
-    res.json({ source: 'database-fallback', records: result.rows });
+    const payload = { source: 'database-fallback', records: result.rows, fetched_at: new Date().toISOString(), warning: 'Live data.gov.in feed is not configured or returned no records' };
+    mandiDailyCache.set(cacheKey, { date: today, payload });
+    res.json(payload);
   } catch (err) {
     try {
       const fallback = await pool.query('SELECT crop_key, crop_name, price_per_quintal, yield_per_acre, updated_at FROM crop_market_prices ORDER BY crop_name');
