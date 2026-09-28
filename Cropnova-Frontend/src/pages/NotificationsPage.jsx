@@ -18,6 +18,7 @@ const buildWeatherAlerts = (weather, crops) => {
   if (!weather) return [];
   const cropNames = crops.map(crop => crop.crop_name || crop.cropName).filter(Boolean).join(', ') || 'your crops';
   const alerts = [];
+  if (weather.alert) alerts.push({ id: 'weather-advisory', title: 'Weather advisory', message: `${weather.alert} Crop focus: ${cropNames}.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
   if (Number(weather.rainfallProbPct) >= 70) alerts.push({ id: 'weather-heavy-rain', title: 'Heavy rain expected', message: `Rain is likely near ${weather.location || 'your farm'}. Delay spraying and check drainage for ${cropNames}.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
   if (Number(weather.tempC) >= 38) alerts.push({ id: 'weather-heatwave', title: 'Heat stress risk', message: `High temperatures may stress ${cropNames}. Check irrigation early morning or evening and inspect leaves for wilting.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
   if (Number(weather.windSpeedKmh) >= 30) alerts.push({ id: 'weather-high-wind', title: 'Strong wind warning', message: `Strong winds are expected near ${weather.location || 'your farm'}. Avoid spraying and secure young plants or support structures.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
@@ -33,10 +34,12 @@ export const NotificationsPage = () => {
   useEffect(() => {
     const loadNotifications = async () => {
       try {
-        const [crops, weather] = await Promise.all([
+        const [cropsResult, weatherResult] = await Promise.allSettled([
           api.get('/crops'),
-          fetch('/api/weather').then(response => response.ok ? response.json() : null).catch(() => null)
+          api.get('/weather')
         ]);
+        const crops = cropsResult.status === 'fulfilled' ? cropsResult.value : [];
+        const weather = weatherResult.status === 'fulfilled' ? weatherResult.value : null;
         const calendarStates = JSON.parse(localStorage.getItem(`cropnova-calendar-${user?.id || 'guest'}`) || '{}');
         const farmerCrops = Array.isArray(crops) ? crops : [];
         const generated = [...buildReminders(farmerCrops), ...buildWeatherAlerts(weather, farmerCrops)]
