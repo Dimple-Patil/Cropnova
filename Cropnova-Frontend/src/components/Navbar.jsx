@@ -80,8 +80,6 @@ export const Navbar = () => {
       items.push(
         { title: 'Dashboard', path: '/', icon: LayoutDashboard },
         { title: 'Crops', path: '/crops', icon: Sprout },
-        { title: 'Soil Health', path: '/soil', icon: TestTube2 },
-        { title: 'Fertilizers', path: '/fertilizers', icon: DollarSign },
         { title: 'Expenses & Income', path: '/finance', icon: Wallet },
         { title: 'Profitability', path: '/profitability', icon: BarChart3 },
         { title: 'Mandi Prices', path: '/mandi-prices', icon: TrendingUp },

@@ -60,8 +60,6 @@ export const Sidebar = () => {
     
     // Farmer-only and Farmer+Expert routes
     { title: 'Crop Management', path: '/crops', icon: Sprout, roles: ['farmer'] },
-    { title: 'Soil Analysis & Health', path: '/soil', icon: TestTube2, roles: ['farmer', 'expert'] },
-    { title: 'Fertilizer Calculator', path: '/fertilizers', icon: DollarSign, roles: ['farmer', 'expert'] },
     { title: 'Farm Expenses & Income', path: '/finance', icon: Wallet, roles: ['farmer'] },
     { title: 'Profitability & Prices', path: '/profitability', icon: BarChart3, roles: ['farmer'] },
     { title: 'Mandi Prices', path: '/mandi-prices', icon: TrendingUp, roles: ['farmer', 'expert', 'vendor'] },

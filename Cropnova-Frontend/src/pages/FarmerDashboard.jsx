@@ -536,6 +536,24 @@ export const FarmerDashboard = () => {
             action="Get recommendations"
             tone="var(--accent)"
           />
+          <DashboardFeatureCard
+            icon={<TestTube2 size={23} />}
+            title="Soil Health"
+            value={matchingFarm?.soil_type || matchingFarm?.soilType || 'Not analysed'}
+            detail={matchingFarm ? 'Review your soil profile, nutrient status, and nearby testing support.' : 'Register your land details to start tracking soil health.'}
+            link="/soil"
+            action="Open soil health"
+            tone="#8E44AD"
+          />
+          <DashboardFeatureCard
+            icon={<DollarSign size={23} />}
+            title="Fertilizer Plan"
+            value={primaryCrop ? `${activeCropName} inputs` : 'Plan inputs'}
+            detail="Calculate fertilizer quantities and plan nutrient applications for your crop area."
+            link="/fertilizers"
+            action="Calculate fertilizer"
+            tone="var(--secondary)"
+          />
         </div>
         <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.9rem' }}>
           <Link to="/disease-detection" className="btn btn-primary" style={{ textDecoration: 'none' }}>
