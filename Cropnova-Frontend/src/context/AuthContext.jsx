@@ -5,11 +5,20 @@ const AuthContext = createContext();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const saveSession = (user) => {
-  // Session persistence removed as per requirements.
+  if (user) {
+    localStorage.setItem('cropnova-session', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('cropnova-session');
+  }
 };
 
 const loadSession = () => {
-  return null;
+  try {
+    const saved = JSON.parse(localStorage.getItem('cropnova-session') || 'null');
+    return saved?.token ? saved : null;
+  } catch {
+    return null;
+  }
 };
 
 // ── Provider ─────────────────────────────────────────────────────────────────
@@ -17,9 +26,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUserRaw]          = useState(() => loadSession());
   const [theme, setTheme]           = useState('light');
 
+  useEffect(() => {
+    setApiToken(user?.token || null);
+  }, [user]);
+
   // Sync user to localStorage on every change
   const setUser = (u) => {
     setUserRaw(u);
+    saveSession(u);
     if (u && u.token) {
       setApiToken(u.token);
     } else {
