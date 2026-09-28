@@ -192,6 +192,20 @@ export const CropManagement = () => {
 
   const set = (key, val) => setNewCrop(prev => ({ ...prev, [key]: val }));
 
+  const performance = crops.map(crop => ({
+    name: crop.crop_name || crop.cropName || 'Crop',
+    acres: crop.budgetCalc?.acres || Number(crop.acreage) || 1,
+    cost: crop.budgetCalc?.total || 0,
+    revenue: crop.budgetCalc?.estIncome || 0,
+    profit: crop.budgetCalc?.netProfit || 0
+  }));
+  const performanceTotals = performance.reduce((totals, item) => ({
+    cost: totals.cost + item.cost,
+    revenue: totals.revenue + item.revenue,
+    profit: totals.profit + item.profit
+  }), { cost: 0, revenue: 0, profit: 0 });
+  const bestPerformance = performance.reduce((best, item) => !best || item.profit > best.profit ? item : best, null);
+
   const renderList = () => (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
@@ -207,6 +221,27 @@ export const CropManagement = () => {
           <Plus size={18} /> Add Crop
         </button>
       </div>
+
+      {crops.length > 0 && (
+        <section className="card" style={{ borderLeft: '4px solid var(--primary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Crop Performance Analytics</h3>
+              <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)' }}>Estimated performance from your saved crop areas and current planning rates.</p>
+            </div>
+            {bestPerformance && <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Top return: {bestPerformance.name}</span>}
+          </div>
+          <div className="grid-4" style={{ marginTop: '1rem' }}>
+            <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>ACTIVE CROPS</span><strong style={{ display: 'block', fontSize: '1.5rem' }}>{crops.length}</strong></div>
+            <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>EST. INVESTMENT</span><strong style={{ display: 'block', fontSize: '1.25rem' }}>₹{performanceTotals.cost.toLocaleString('en-IN')}</strong></div>
+            <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>EXPECTED REVENUE</span><strong style={{ display: 'block', fontSize: '1.25rem', color: 'var(--primary)' }}>₹{performanceTotals.revenue.toLocaleString('en-IN')}</strong></div>
+            <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>EST. NET RETURN</span><strong style={{ display: 'block', fontSize: '1.25rem', color: performanceTotals.profit >= 0 ? 'var(--primary)' : 'var(--danger)' }}>₹{performanceTotals.profit.toLocaleString('en-IN')}</strong></div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', marginTop: '1rem' }}>
+            {performance.map(item => <div key={item.name} style={{ display: 'grid', gridTemplateColumns: 'minmax(100px, 1fr) repeat(3, minmax(90px, 1fr))', gap: '0.75rem', alignItems: 'center', padding: '0.65rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }}><strong>{item.name}</strong><span>{item.acres} acre(s)</span><span>Revenue ₹{item.revenue.toLocaleString('en-IN')}</span><span style={{ color: item.profit >= 0 ? 'var(--primary)' : 'var(--danger)', fontWeight: 700 }}>Net ₹{item.profit.toLocaleString('en-IN')}</span></div>)}
+          </div>
+        </section>
+      )}
 
       {/* ── Empty state ──────────────────────────────────────── */}
       {crops.length === 0 && (
