@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Sprout, Sun, Moon, Bell, LogIn, LogOut,
   LayoutDashboard, TestTube2, DollarSign, Wallet, Wheat, Building2, UserCog, ShoppingCart,
-  User, MapPin, ChevronDown, Menu, X, BarChart3, Languages
+  User, MapPin, ChevronDown, Menu, X, BarChart3, Languages, TrendingUp, Wrench
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -84,6 +84,8 @@ export const Navbar = () => {
         { title: 'Fertilizers', path: '/fertilizers', icon: DollarSign },
         { title: 'Expenses & Income', path: '/finance', icon: Wallet },
         { title: 'Profitability', path: '/profitability', icon: BarChart3 },
+        { title: 'Mandi Prices', path: '/mandi-prices', icon: TrendingUp },
+        { title: 'Tools', path: '/farmer-tools', icon: Wrench },
         { title: 'Govt Schemes', path: '/schemes', icon: Building2 }
       );
     } else if (user.role === 'expert') {

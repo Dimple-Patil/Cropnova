@@ -84,6 +84,9 @@ export const FarmerDashboard = () => {
   const [newsList, setNewsList] = useState([]);
   const [newsCategory, setNewsCategory] = useState('All');
   const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [mandiPrices, setMandiPrices] = useState([]);
+  const [isLoadingMandiPrices, setIsLoadingMandiPrices] = useState(true);
+  const [mandiPriceSource, setMandiPriceSource] = useState('');
 
   // Land Registration Form State
   const [farmName, setFarmName] = useState('');
@@ -97,12 +100,37 @@ export const FarmerDashboard = () => {
     loadFarms();
     loadCrops();
     loadRealTimeNews();
+    loadMandiPrices();
     try {
       setCalendarTaskStates(JSON.parse(localStorage.getItem(`cropnova-calendar-${user?.id || 'guest'}`) || '{}'));
     } catch {
       setCalendarTaskStates({});
     }
-  }, [user?.id]);
+  }, [user?.id, user?.state, user?.district]);
+
+  const loadMandiPrices = async () => {
+    setIsLoadingMandiPrices(true);
+    try {
+      const params = new URLSearchParams();
+      if (user?.state) params.set('state', user.state);
+      if (user?.district) params.set('district', user.district);
+      const data = await api.get(`/market/prices${params.toString() ? `?${params.toString()}` : ''}`);
+      const records = Array.isArray(data?.records) ? data.records : [];
+      setMandiPriceSource(data?.source === 'data.gov.in' ? 'Live data.gov.in' : 'Cropnova market data');
+      setMandiPrices(records.slice(0, 5).map((item) => ({
+        crop: item.commodity || item.crop_name || item.cropName || 'Crop',
+        market: item.market || item.district || user?.district || 'Nearby market',
+        price: Number(item.modal_price || item.price_per_quintal || item.max_price || 0),
+        unit: 'quintal',
+        date: item.arrival_date || item.updated_at
+      })).filter(item => item.price > 0));
+    } catch (error) {
+      setMandiPrices([]);
+      setMandiPriceSource('Prices unavailable');
+    } finally {
+      setIsLoadingMandiPrices(false);
+    }
+  };
 
   const loadCrops = async () => {
     try {
@@ -548,6 +576,50 @@ export const FarmerDashboard = () => {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Live mandi prices */}
+      <div className="card" style={{ borderLeft: '4px solid var(--secondary)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <TrendingUp size={22} color="var(--secondary)" />
+            <div>
+              <h3 style={{ margin: 0 }}>Mandi Prices</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', margin: '0.2rem 0 0' }}>
+                Current crop prices near {user?.district || user?.state || 'your location'}
+              </p>
+            </div>
+          </div>
+          <button onClick={loadMandiPrices} className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }} title="Refresh mandi prices">
+            <RefreshCw size={13} className={isLoadingMandiPrices ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
+
+        {isLoadingMandiPrices ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Loading mandi prices...</div>
+        ) : mandiPrices.length === 0 ? (
+          <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            Mandi prices are unavailable right now. Please try refreshing.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.65rem' }}>
+            {mandiPrices.map((item, index) => (
+              <div key={`${item.crop}-${item.market}-${index}`} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', alignItems: 'flex-start' }}>
+                  <strong style={{ textTransform: 'capitalize' }}>{item.crop}</strong>
+                  <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>₹/qtl</span>
+                </div>
+                <div style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--secondary)', marginTop: '0.45rem' }}>
+                  ₹{item.price.toLocaleString('en-IN')}
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', marginTop: '0.15rem' }}>{item.market}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', marginTop: '0.8rem' }}>
+          Source: {mandiPriceSource || 'Loading'} · Modal price per quintal
+        </div>
       </div>
 
       {/* 3. TWO CARDS BELOW WEATHER FORECAST: 1st Card News | 2nd Card Soil Testing Labs */}

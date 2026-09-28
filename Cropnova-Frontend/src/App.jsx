@@ -28,6 +28,8 @@ import { PestManagement } from './pages/PestManagement';
 import { DiseaseDetection } from './pages/DiseaseDetection';
 import { CropCalendar } from './pages/CropCalendar';
 import { ProfitabilityIntelligence } from './pages/ProfitabilityIntelligence';
+import { MandiPrices } from './pages/MandiPrices';
+import { FarmerTools } from './pages/FarmerTools';
 
 // Protected Route Wrapper Enforcing Strict Role Access
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -79,6 +81,8 @@ export function App() {
             <Route path="/disease-detection" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><DiseaseDetection /></ProtectedRoute>} />
             <Route path="/calendar" element={<ProtectedRoute allowedRoles={['farmer']}><CropCalendar /></ProtectedRoute>} />
             <Route path="/profitability" element={<ProtectedRoute allowedRoles={['farmer']}><ProfitabilityIntelligence /></ProtectedRoute>} />
+            <Route path="/mandi-prices" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor']}><MandiPrices /></ProtectedRoute>} />
+            <Route path="/farmer-tools" element={<ProtectedRoute allowedRoles={['farmer', 'expert']}><FarmerTools /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPanel /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute allowedRoles={['farmer', 'expert', 'vendor', 'admin']}><ProfilePage /></ProtectedRoute>} />
           </Routes>

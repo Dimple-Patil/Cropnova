@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Sprout, TestTube2,
   Bug, Droplet, DollarSign, ShoppingCart, MessageSquare,
   Building2, Newspaper, Wallet, Wheat, ShieldAlert, BarChart3, UserCog, LogIn, Lock,
-  CloudSun, Lightbulb, CalendarDays
+  CloudSun, Lightbulb, CalendarDays, TrendingUp, Wrench
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -64,6 +64,8 @@ export const Sidebar = () => {
     { title: 'Fertilizer Calculator', path: '/fertilizers', icon: DollarSign, roles: ['farmer', 'expert'] },
     { title: 'Farm Expenses & Income', path: '/finance', icon: Wallet, roles: ['farmer'] },
     { title: 'Profitability & Prices', path: '/profitability', icon: BarChart3, roles: ['farmer'] },
+    { title: 'Mandi Prices', path: '/mandi-prices', icon: TrendingUp, roles: ['farmer', 'expert', 'vendor'] },
+    { title: 'Farmer Tools', path: '/farmer-tools', icon: Wrench, roles: ['farmer', 'expert'] },
     { title: 'Weather Monitoring', path: '/weather', icon: CloudSun, roles: ['farmer', 'expert', 'vendor'] },
     { title: 'Smart Irrigation', path: '/irrigation', icon: Droplet, roles: ['farmer'] },
     { title: 'Crop Recommendations', path: '/recommendations', icon: Lightbulb, roles: ['farmer', 'expert'] },
