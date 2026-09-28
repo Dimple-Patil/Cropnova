@@ -37,7 +37,7 @@ export const MandiPrices = () => {
         updated: item.arrival_date || item.updated_at || response.fetched_at || 'Today'
       })).filter(item => item.price > 0);
       setAllPrices(normalized.length ? normalized : fallbackPrices);
-      setSource(response.source === 'data.gov.in' ? 'Live data.gov.in' : 'Database fallback');
+      setSource(response.source === 'data.gov.in' ? 'Live data.gov.in' : response.source === 'agmarknet.gov.in' ? 'Live Agmarknet' : 'Database fallback');
       setLastUpdated(response.fetched_at || new Date().toISOString());
     } catch {
       setAllPrices(fallbackPrices);
@@ -62,7 +62,7 @@ export const MandiPrices = () => {
       </div>
     </div>
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}><h3 style={{ margin: 0 }}>Today’s market board</h3><span className={`badge ${source === 'Live data.gov.in' ? 'badge-success' : 'badge-warning'}`}>{source || 'Loading prices...'}</span></div>
+      <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}><h3 style={{ margin: 0 }}>Today’s market board</h3><span className={`badge ${source.startsWith('Live') ? 'badge-success' : 'badge-warning'}`}>{source || 'Loading prices...'}</span></div>
       {error && <div style={{ margin: '1rem 1.5rem 0', padding: '0.75rem 1rem', background: 'var(--gold-bg)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{error}</div>}
       <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '650px' }}><thead><tr style={{ textAlign: 'left', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{['Crop','Market','State','Price / quintal','Movement','Updated'].map(item => <th key={item} style={{ padding: '0.9rem 1rem', borderBottom: '1px solid var(--border)' }}>{item}</th>)}</tr></thead><tbody>{prices.map(item => <tr key={item.crop} style={{ borderBottom: '1px solid var(--border)' }}><td style={{ padding: '1rem', fontWeight: 700 }}>{item.crop} <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>· {item.local}</span></td><td style={{ padding: '1rem' }}><MapPin size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{item.market}</td><td style={{ padding: '1rem' }}>{item.state}</td><td style={{ padding: '1rem', fontWeight: 800 }}>{money(item.price)}</td><td style={{ padding: '1rem', color: item.change > 0 ? 'var(--success)' : item.change < 0 ? 'var(--error)' : 'var(--text-secondary)' }}>{item.change > 0 ? <TrendingUp size={15} /> : item.change < 0 ? <TrendingDown size={15} /> : '—'} {item.change ? `${item.change > 0 ? '+' : ''}${item.change}` : 'Stable'}</td><td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{item.updated}</td></tr>)}</tbody></table></div>
       {!prices.length && <p style={{ padding: '2rem', color: 'var(--text-secondary)' }}>No market prices match your search.</p>}

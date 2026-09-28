@@ -10,6 +10,33 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'cropnova_super_secret_key_2026';
 const mandiDailyCache = new Map();
 
+// Keyless fallback: Agmarknet 2.0 exposes the public market-price service used by
+// its website. The response shape has changed between releases, so normalize the
+// common field names below and keep the provider configurable through .env.
+const fetchAgmarknetFallback = async ({ crop, state, district }) => {
+  const baseUrl = process.env.AGMARKNET_API_URL || 'https://api.agmarknet.gov.in/v1/prices-and-arrivals/market-price/lastweek';
+  const url = new URL(baseUrl);
+  url.searchParams.set('page', '1');
+  url.searchParams.set('limit', '100');
+  if (crop) url.searchParams.set('commodity', crop);
+  if (state) url.searchParams.set('state', state);
+  if (district) url.searchParams.set('district', district);
+  const response = await fetch(url, { headers: { Accept: 'application/json', Referer: 'https://agmarknet.gov.in/' } });
+  if (!response.ok) throw new Error(`Agmarknet fallback HTTP ${response.status}`);
+  const body = await response.json();
+  const rows = Array.isArray(body) ? body : (body.data || body.records || body.content || body.result || []);
+  return rows.map(item => ({
+    commodity: item.commodity || item.commodityName || item.crop_name || item.cropName,
+    market: item.market || item.marketName || item.market_name || item.district,
+    district: item.district || item.districtName,
+    state: item.state || item.stateName,
+    modal_price: item.modal_price || item.modalPrice || item.modal || item.price,
+    min_price: item.min_price || item.minPrice,
+    max_price: item.max_price || item.maxPrice,
+    arrival_date: item.arrival_date || item.arrivalDate || item.date
+  })).filter(item => item.commodity && Number(item.modal_price || item.max_price || 0) > 0);
+};
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
@@ -129,6 +156,16 @@ app.get('/api/market/prices', auth, async (req, res) => {
           return res.json(payload);
         }
       }
+    }
+    try {
+      const fallbackRecords = await fetchAgmarknetFallback({ crop, state, district });
+      if (fallbackRecords.length) {
+        const payload = { source: 'agmarknet.gov.in', records: fallbackRecords, fetched_at: new Date().toISOString(), warning: 'Using keyless Agmarknet public feed' };
+        mandiDailyCache.set(cacheKey, { date: today, payload });
+        return res.json(payload);
+      }
+    } catch (fallbackError) {
+      console.warn('Agmarknet keyless fallback unavailable:', fallbackError.message);
     }
     const result = await pool.query('SELECT crop_key, crop_name, price_per_quintal, yield_per_acre, updated_at FROM crop_market_prices ORDER BY crop_name');
     const payload = { source: 'database-fallback', records: result.rows, fetched_at: new Date().toISOString(), warning: 'Live data.gov.in feed is not configured or returned no records' };
