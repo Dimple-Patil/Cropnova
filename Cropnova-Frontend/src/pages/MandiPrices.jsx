@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MapPin, Search, TrendingDown, TrendingUp, RefreshCw } from 'lucide-react';
+import { MapPin, Search, TrendingDown, TrendingUp, RefreshCw, LocateFixed } from 'lucide-react';
 import { api } from '../utils/api';
 
 const fallbackPrices = [
@@ -21,11 +21,16 @@ export const MandiPrices = () => {
   const [source, setSource] = useState('');
   const [lastUpdated, setLastUpdated] = useState('');
   const [error, setError] = useState('');
+  const [location, setLocation] = useState({ district: '', state: '', label: '' });
+  const [locating, setLocating] = useState(false);
   const states = ['All states', ...new Set(allPrices.map(item => item.state).filter(Boolean))];
   const loadPrices = async () => {
     try {
       setError('');
-      const response = await api.get('/market/prices');
+      const params = new URLSearchParams();
+      if (location.state) params.set('state', location.state);
+      if (location.district) params.set('district', location.district);
+      const response = await api.get(`/market/prices${params.toString() ? `?${params.toString()}` : ''}`);
       const records = Array.isArray(response?.records) ? response.records : [];
       const normalized = records.map(item => ({
         crop: item.commodity || item.crop_name || item.cropName || 'Crop',
@@ -45,7 +50,20 @@ export const MandiPrices = () => {
       setError('Live prices could not be reached. Showing the last available sample data.');
     }
   };
-  React.useEffect(() => { loadPrices(); }, []);
+  React.useEffect(() => { loadPrices(); }, [location.state, location.district]);
+  const detectLocation = () => {
+    if (!navigator.geolocation) { setError('Location is not supported by this browser.'); return; }
+    setLocating(true); setError('');
+    navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}&zoom=10&addressdetails=1`, { headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        const address = data.address || {};
+        setLocation({ district: address.state_district || address.county || address.city_district || address.city || '', state: address.state || '', label: data.display_name || 'Current location' });
+      } catch { setError('Could not identify the current area. Please use your profile location.'); }
+      finally { setLocating(false); }
+    }, () => { setLocating(false); setError('Location permission was not granted. Showing all available market prices.'); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 });
+  };
   const prices = useMemo(() => allPrices.filter(item => {
     const matchesSearch = `${item.crop} ${item.local} ${item.market}`.toLowerCase().includes(query.toLowerCase());
     return matchesSearch && (state === 'All states' || item.state === state);
@@ -58,9 +76,10 @@ export const MandiPrices = () => {
       <div className="grid-3">
         <div style={{ position: 'relative' }}><Search size={17} style={{ position: 'absolute', left: 12, top: 13, color: 'var(--text-secondary)' }} /><input className="input-field" style={{ paddingLeft: '2.4rem' }} placeholder="Search crop or market" value={query} onChange={e => setQuery(e.target.value)} /></div>
         <select className="input-field" value={state} onChange={e => setState(e.target.value)}>{states.map(item => <option key={item}>{item}</option>)}</select>
-        <button className="btn btn-secondary" onClick={async () => { setRefreshed(true); await loadPrices(); setTimeout(() => setRefreshed(false), 700); }}><RefreshCw size={16} /> {refreshed ? 'Updated' : 'Refresh prices'}</button>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}><button className="btn btn-secondary" onClick={detectLocation} disabled={locating}><LocateFixed size={16} /> {locating ? 'Locating...' : location.label ? 'Update location' : 'Use my location'}</button><button className="btn btn-secondary" onClick={async () => { setRefreshed(true); await loadPrices(); setTimeout(() => setRefreshed(false), 700); }}><RefreshCw size={16} /> {refreshed ? 'Updated' : 'Refresh prices'}</button></div>
       </div>
     </div>
+    {location.label && <div className="card" style={{ padding: '0.8rem 1rem', background: 'var(--light-green)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem' }}><MapPin size={16} color="var(--secondary)" /><span><strong>Prices near you:</strong> {location.district}{location.state ? `, ${location.state}` : ''}</span></div>}
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}><h3 style={{ margin: 0 }}>Today’s market board</h3><span className={`badge ${source.startsWith('Live') ? 'badge-success' : 'badge-warning'}`}>{source || 'Loading prices...'}</span></div>
       {error && <div style={{ margin: '1rem 1.5rem 0', padding: '0.75rem 1rem', background: 'var(--gold-bg)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{error}</div>}
