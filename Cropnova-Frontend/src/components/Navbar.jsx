@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Sprout, Sun, Moon, Bell, LogIn, LogOut,
   LayoutDashboard, TestTube2, DollarSign, Wallet, Wheat, Building2, UserCog, ShoppingCart,
-  User, MapPin, ChevronDown, Menu, X, BarChart3
+  User, MapPin, ChevronDown, Menu, X, BarChart3, Languages
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -13,6 +13,44 @@ export const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [language, setLanguage] = useState(() => localStorage.getItem('cropnova-language') || 'en');
+
+  // Google Website Translator handles the existing and future page content.
+  useEffect(() => {
+    const initializeTranslator = () => {
+      if (!window.google?.translate?.TranslateElement) return;
+      if (!document.getElementById('google_translate_element')?.hasChildNodes()) {
+        new window.google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'en,mr',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+    };
+
+    window.cropnovaGoogleTranslateReady = initializeTranslator;
+    initializeTranslator();
+    return () => { delete window.cropnovaGoogleTranslateReady; };
+  }, []);
+
+  const changeLanguage = (nextLanguage) => {
+    setLanguage(nextLanguage);
+    localStorage.setItem('cropnova-language', nextLanguage);
+    const select = document.querySelector('.goog-te-combo');
+    if (select) {
+      select.value = nextLanguage;
+      select.dispatchEvent(new Event('change'));
+    } else {
+      // The widget may still be loading; retry once it has initialized.
+      setTimeout(() => {
+        const retrySelect = document.querySelector('.goog-te-combo');
+        if (retrySelect) {
+          retrySelect.value = nextLanguage;
+          retrySelect.dispatchEvent(new Event('change'));
+        }
+      }, 700);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -157,6 +195,19 @@ export const Navbar = () => {
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
 
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} title="Choose language">
+            <Languages size={16} style={{ position: 'absolute', left: '0.6rem', pointerEvents: 'none', color: 'var(--primary)' }} />
+            <select
+              aria-label="Choose language"
+              value={language}
+              onChange={(event) => changeLanguage(event.target.value)}
+              className="language-selector"
+            >
+              <option value="en">EN</option>
+              <option value="mr">मराठी</option>
+            </select>
+          </div>
+
           {user ? (
             <>
               <Link to="/notifications" style={{ position: 'relative', color: 'var(--text-primary)', textDecoration: 'none', padding: '0.3rem' }} title="Notifications">
@@ -277,6 +328,9 @@ export const Navbar = () => {
           )}
         </div>
       </nav>
+
+      {/* Kept visually unobtrusive; the custom selector above controls it. */}
+      <div id="google_translate_element" className="google-translate-host" aria-hidden="true" />
 
       {/* Mobile Drawer Navigation */}
       {isMobileMenuOpen && (
