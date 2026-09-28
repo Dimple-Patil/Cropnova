@@ -636,7 +636,7 @@ app.get('/api/weather', (req, res) => {
 });
 
 app.post('/api/disease/detect', auth, async (req, res) => {
-  const { imageData, cropName } = req.body;
+  const { imageData } = req.body;
   if (!imageData || !imageData.startsWith('data:image/')) return res.status(400).json({ error: 'A crop image is required' });
   if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY is not configured on the backend' });
   try {
@@ -646,7 +646,7 @@ app.post('/api/disease/detect', auth, async (req, res) => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: 'You are a cautious plant pathologist. Analyze the provided crop image. Return JSON only with keys status (confirmed, possible, or needs_review), name, confidence (number 0-100 or null), symptoms, organic, chemical. Never claim certainty from a poor image. If crop context conflicts with the image, use needs_review. Do not recommend chemical treatment when status is needs_review.' }, { role: 'user', content: [{ type: 'text', text: `Crop context: ${cropName || 'unknown'}. Identify visible symptoms and likely disease, if possible.` }, { type: 'image_url', image_url: { url: imageData, detail: 'high' } }] }],
+        messages: [{ role: 'system', content: 'You are a cautious plant pathologist. Analyze only the visible plant image; do not assume it belongs to any crop in a database. Return JSON only with keys status (confirmed, possible, or needs_review), name, confidence (number 0-100 or null), symptoms, organic, chemical. Never claim certainty from a poor, ambiguous, or mismatched image. Do not recommend chemical treatment when status is needs_review.' }, { role: 'user', content: [{ type: 'text', text: 'Identify visible symptoms and the most likely disease, if possible. If the plant species or disease cannot be established from the image, say so.' }, { type: 'image_url', image_url: { url: imageData, detail: 'high' } }] }],
         temperature: 0.1,
         max_tokens: 700
       })
@@ -655,7 +655,7 @@ app.post('/api/disease/detect', auth, async (req, res) => {
     const payload = await response.json();
     const result = JSON.parse(payload.choices[0].message.content);
     try {
-      await pool.query('INSERT INTO disease_records (user_id, crop_name, detected_disease, confidence_score, remedy_organic, remedy_chemical) VALUES ($1,$2,$3,$4,$5,$6)', [req.user.id, cropName || 'Unknown', result.name, result.confidence, result.organic, result.chemical]);
+      await pool.query('INSERT INTO disease_records (user_id, detected_disease, confidence_score, remedy_organic, remedy_chemical) VALUES ($1,$2,$3,$4,$5)', [req.user.id, result.name, result.confidence, result.organic, result.chemical]);
     } catch (saveError) { console.error('Disease history save failed:', saveError.message); }
     res.json(result);
   } catch (err) {

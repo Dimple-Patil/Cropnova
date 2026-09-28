@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Bug, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Upload, Bug, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { api } from '../utils/api';
 
 export const DiseaseDetection = () => {
@@ -7,10 +7,6 @@ export const DiseaseDetection = () => {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [imageData, setImageData] = useState(null);
-  const [cropName, setCropName] = useState('');
-  const [crops, setCrops] = useState([]);
-
-  React.useEffect(() => { api.get('/crops').then(data => setCrops(Array.isArray(data) ? data : [])).catch(() => setCrops([])); }, []);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -25,7 +21,7 @@ export const DiseaseDetection = () => {
 
   const handleScan = () => {
     setScanning(true);
-    api.post('/disease/detect', { imageData, cropName }).then(res => setResult(res)).catch(error => setResult({ status: 'needs_review', name: 'Analysis unavailable', confidence: null, symptoms: error.message, organic: 'Consult an agriculture expert before treating the crop.', chemical: 'No chemical recommendation is available.' })).finally(() => setScanning(false));
+    api.post('/disease/detect', { imageData }).then(res => setResult(res)).catch(error => setResult({ status: 'needs_review', name: 'Analysis unavailable', confidence: null, symptoms: error.message, organic: 'Consult an agriculture expert before treating the crop.', chemical: 'No chemical recommendation is available.' })).finally(() => setScanning(false));
   };
 
   return (
@@ -41,10 +37,6 @@ export const DiseaseDetection = () => {
           {image ? (
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <img src={image} alt="Crop sample" style={{ maxHeight: '220px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />
-              <select className="input-field" value={cropName} onChange={e => setCropName(e.target.value)} style={{ maxWidth: '280px', marginTop: '0.8rem' }}>
-                <option value="">Select crop context</option>
-                {crops.map(crop => <option key={crop.id} value={crop.crop_name || crop.cropName}>{crop.crop_name || crop.cropName}</option>)}
-              </select>
               <button onClick={handleScan} className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={scanning}>
                 <Bug size={18} /> {scanning ? 'Running Neural Diagnostic...' : 'Start AI Analysis'}
               </button>
