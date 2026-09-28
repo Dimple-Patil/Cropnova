@@ -14,6 +14,17 @@ const buildReminders = crops => crops.flatMap(crop => {
   });
 });
 
+const buildWeatherAlerts = (weather, crops) => {
+  if (!weather) return [];
+  const cropNames = crops.map(crop => crop.crop_name || crop.cropName).filter(Boolean).join(', ') || 'your crops';
+  const alerts = [];
+  if (Number(weather.rainfallProbPct) >= 70) alerts.push({ id: 'weather-heavy-rain', title: 'Heavy rain expected', message: `Rain is likely near ${weather.location || 'your farm'}. Delay spraying and check drainage for ${cropNames}.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
+  if (Number(weather.tempC) >= 38) alerts.push({ id: 'weather-heatwave', title: 'Heat stress risk', message: `High temperatures may stress ${cropNames}. Check irrigation early morning or evening and inspect leaves for wilting.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
+  if (Number(weather.windSpeedKmh) >= 30) alerts.push({ id: 'weather-high-wind', title: 'Strong wind warning', message: `Strong winds are expected near ${weather.location || 'your farm'}. Avoid spraying and secure young plants or support structures.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
+  if (Number(weather.humidityPct) >= 80) alerts.push({ id: 'weather-disease-risk', title: 'High humidity disease risk', message: `High humidity can increase fungal disease risk in ${cropNames}. Improve airflow and inspect leaves before watering.`, date: new Date().toISOString().slice(0, 10), isRead: false, kind: 'weather' });
+  return alerts;
+};
+
 export const NotificationsPage = () => {
   const { user } = useAuth();
   const storageKey = `cropnova-notifications-${user?.id || 'guest'}`;
@@ -22,9 +33,13 @@ export const NotificationsPage = () => {
   useEffect(() => {
     const loadNotifications = async () => {
       try {
-        const crops = await api.get('/crops');
+        const [crops, weather] = await Promise.all([
+          api.get('/crops'),
+          fetch('/api/weather').then(response => response.ok ? response.json() : null).catch(() => null)
+        ]);
         const calendarStates = JSON.parse(localStorage.getItem(`cropnova-calendar-${user?.id || 'guest'}`) || '{}');
-        const generated = buildReminders(Array.isArray(crops) ? crops : [])
+        const farmerCrops = Array.isArray(crops) ? crops : [];
+        const generated = [...buildReminders(farmerCrops), ...buildWeatherAlerts(weather, farmerCrops)]
           .filter(alert => calendarStates[alert.id] !== 'done' && calendarStates[alert.id] !== 'skipped');
         const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
         setAlerts(generated.map(alert => ({ ...alert, ...(saved[alert.id] || {}) })).sort((a, b) => new Date(a.date) - new Date(b.date)));

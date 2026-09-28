@@ -638,22 +638,33 @@ app.get('/api/weather', (req, res) => {
 app.post('/api/disease/detect', auth, async (req, res) => {
   const { imageData } = req.body;
   if (!imageData || !imageData.startsWith('data:image/')) return res.status(400).json({ error: 'A crop image is required' });
-  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY is not configured on the backend' });
+  if (!process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'GEMINI_API_KEY is not configured on the backend' });
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: 'You are a cautious plant pathologist. Analyze only the visible plant image; do not assume it belongs to any crop in a database. Return JSON only with keys status (confirmed, possible, or needs_review), name, confidence (number 0-100 or null), symptoms, organic, chemical. Never claim certainty from a poor, ambiguous, or mismatched image. Do not recommend chemical treatment when status is needs_review.' }, { role: 'user', content: [{ type: 'text', text: 'Identify visible symptoms and the most likely disease, if possible. If the plant species or disease cannot be established from the image, say so.' }, { type: 'image_url', image_url: { url: imageData, detail: 'high' } }] }],
-        temperature: 0.1,
-        max_tokens: 700
+        contents: [{ role: 'user', parts: [{ text: 'You are a cautious plant pathologist. Analyze only the visible plant image; do not assume it belongs to any crop in a database. Return JSON only with keys status (confirmed, possible, or needs_review), name, confidence (number 0-100 or null), symptoms, organic, chemical. Never claim certainty from a poor, ambiguous, or mismatched image. Do not recommend chemical treatment when status is needs_review. Identify visible symptoms and the most likely disease, if possible. If the plant species or disease cannot be established from the image, say so.' }, { inline_data: { mime_type: imageData.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/)?.[1] || 'image/jpeg', data: imageData.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '') } }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 700, responseMimeType: 'application/json' }
       })
     });
-    if (!response.ok) return res.status(502).json({ error: 'OpenAI disease analysis failed' });
+    if (!response.ok) {
+      const providerError = await response.text();
+      console.error('Gemini disease analysis error:', providerError);
+      let detail = 'Gemini rejected the analysis request';
+      try { detail = JSON.parse(providerError)?.error?.message || detail; } catch { /* keep safe generic detail */ }
+      return res.status(502).json({ error: 'Gemini disease analysis failed', detail });
+    }
     const payload = await response.json();
-    const result = JSON.parse(payload.choices[0].message.content);
+    const text = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
+    if (!text) throw new Error('Gemini returned an empty analysis');
+    const normalizedText = text
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .replace(/[\r\n\t]+/g, ' ')
+      .trim();
+    const result = JSON.parse(normalizedText);
     try {
       await pool.query('INSERT INTO disease_records (user_id, detected_disease, confidence_score, remedy_organic, remedy_chemical) VALUES ($1,$2,$3,$4,$5)', [req.user.id, result.name, result.confidence, result.organic, result.chemical]);
     } catch (saveError) { console.error('Disease history save failed:', saveError.message); }
