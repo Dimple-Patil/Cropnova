@@ -163,6 +163,22 @@ CREATE TABLE IF NOT EXISTS crop_market_prices (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS crop_financial_inputs (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    crop_id INT REFERENCES crops(id) ON DELETE CASCADE,
+    area_acres DECIMAL(10,2),
+    expected_yield_quintals DECIMAL(10,2),
+    seed_cost DECIMAL(12,2) DEFAULT 0,
+    fertilizer_cost DECIMAL(12,2) DEFAULT 0,
+    pesticide_cost DECIMAL(12,2) DEFAULT 0,
+    labor_cost DECIMAL(12,2) DEFAULT 0,
+    irrigation_cost DECIMAL(12,2) DEFAULT 0,
+    other_cost DECIMAL(12,2) DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, crop_id)
+);
+
 INSERT INTO crop_market_prices (crop_key, crop_name, price_per_quintal, yield_per_acre)
 VALUES
   ('rice', 'Rice', 2183, 28),

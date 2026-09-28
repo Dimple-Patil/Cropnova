@@ -107,10 +107,53 @@ app.put('/api/notifications/:id/read', auth, async (req, res) => {
 
 app.get('/api/market/prices', auth, async (req, res) => {
   try {
+    const { crop, state, district } = req.query;
+    const apiKey = process.env.DATA_GOV_API_KEY;
+    const resourceId = process.env.MANDI_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
+    if (apiKey && resourceId) {
+      const params = new URLSearchParams({ 'api-key': apiKey, format: 'json', limit: '100', resource_id: resourceId });
+      if (crop) params.set('filters[commodity]', crop);
+      if (state) params.set('filters[state]', state);
+      if (district) params.set('filters[district]', district);
+      const liveResponse = await fetch(`https://api.data.gov.in/resource/${resourceId}?${params.toString()}`);
+      if (liveResponse.ok) {
+        const live = await liveResponse.json();
+        if (Array.isArray(live.records) && live.records.length) return res.json({ source: 'data.gov.in', records: live.records });
+      }
+    }
     const result = await pool.query('SELECT crop_key, crop_name, price_per_quintal, yield_per_acre, updated_at FROM crop_market_prices ORDER BY crop_name');
+    res.json({ source: 'database-fallback', records: result.rows });
+  } catch (err) {
+    try {
+      const fallback = await pool.query('SELECT crop_key, crop_name, price_per_quintal, yield_per_acre, updated_at FROM crop_market_prices ORDER BY crop_name');
+      res.json({ source: 'database-fallback', records: fallback.rows, warning: 'Live mandi service unavailable' });
+    } catch (fallbackError) {
+      res.status(500).json({ error: 'Could not load market prices' });
+    }
+  }
+});
+
+app.get('/api/financial-inputs', auth, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM crop_financial_inputs WHERE user_id = $1', [req.user.id]);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Could not load market prices' });
+    res.status(500).json({ error: 'Could not load financial inputs' });
+  }
+});
+
+app.put('/api/financial-inputs/:cropId', auth, async (req, res) => {
+  const { areaAcres, expectedYieldQuintals, seedCost, fertilizerCost, pesticideCost, laborCost, irrigationCost, otherCost } = req.body;
+  try {
+    const result = await pool.query(`
+      INSERT INTO crop_financial_inputs (user_id, crop_id, area_acres, expected_yield_quintals, seed_cost, fertilizer_cost, pesticide_cost, labor_cost, irrigation_cost, other_cost)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      ON CONFLICT (user_id, crop_id) DO UPDATE SET area_acres=EXCLUDED.area_acres, expected_yield_quintals=EXCLUDED.expected_yield_quintals, seed_cost=EXCLUDED.seed_cost, fertilizer_cost=EXCLUDED.fertilizer_cost, pesticide_cost=EXCLUDED.pesticide_cost, labor_cost=EXCLUDED.labor_cost, irrigation_cost=EXCLUDED.irrigation_cost, other_cost=EXCLUDED.other_cost, updated_at=CURRENT_TIMESTAMP
+      RETURNING *
+    `, [req.user.id, req.params.cropId, areaAcres || 0, expectedYieldQuintals || 0, seedCost || 0, fertilizerCost || 0, pesticideCost || 0, laborCost || 0, irrigationCost || 0, otherCost || 0]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not save financial inputs' });
   }
 });
 
@@ -592,12 +635,32 @@ app.get('/api/weather', (req, res) => {
   });
 });
 
-app.post('/api/disease/detect', (req, res) => {
-  const sampleDiseases = [
-    { name: 'Tomato Early Blight (Alternaria solani)', confidence: 95.4, organic: 'Apply Copper Fungicide or Neem Leaf Extract.', chemical: 'Mancozeb 75% WP @ 2g/liter.' },
-    { name: 'Maize Leaf Blight (Helminthosporium)', confidence: 91.8, organic: 'Crop rotation and resistant seed selection.', chemical: 'Spray Zineb 75 WP at 2.5g/liter.' }
-  ];
-  res.json(sampleDiseases[Math.floor(Math.random() * sampleDiseases.length)]);
+app.post('/api/disease/detect', auth, async (req, res) => {
+  const { imageData, cropName } = req.body;
+  if (!imageData || !imageData.startsWith('data:image/')) return res.status(400).json({ error: 'A crop image is required' });
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY is not configured on the backend' });
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: 'You are a cautious plant pathologist. Analyze the provided crop image. Return JSON only with keys status (confirmed, possible, or needs_review), name, confidence (number 0-100 or null), symptoms, organic, chemical. Never claim certainty from a poor image. If crop context conflicts with the image, use needs_review. Do not recommend chemical treatment when status is needs_review.' }, { role: 'user', content: [{ type: 'text', text: `Crop context: ${cropName || 'unknown'}. Identify visible symptoms and likely disease, if possible.` }, { type: 'image_url', image_url: { url: imageData, detail: 'high' } }] }],
+        temperature: 0.1,
+        max_tokens: 700
+      })
+    });
+    if (!response.ok) return res.status(502).json({ error: 'OpenAI disease analysis failed' });
+    const payload = await response.json();
+    const result = JSON.parse(payload.choices[0].message.content);
+    try {
+      await pool.query('INSERT INTO disease_records (user_id, crop_name, detected_disease, confidence_score, remedy_organic, remedy_chemical) VALUES ($1,$2,$3,$4,$5,$6)', [req.user.id, cropName || 'Unknown', result.name, result.confidence, result.organic, result.chemical]);
+    } catch (saveError) { console.error('Disease history save failed:', saveError.message); }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Disease analysis failed: ' + err.message });
+  }
 });
 
 app.post('/api/agent/chat', optionalAuth, async (req, res) => {

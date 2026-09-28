@@ -13,16 +13,32 @@ export const ProfitabilityIntelligence = () => {
   const [crops, setCrops] = useState([]);
   const [farms, setFarms] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [financialInputs, setFinancialInputs] = useState([]);
+  const [selectedCropId, setSelectedCropId] = useState('');
+  const [inputForm, setInputForm] = useState({ areaAcres: '', expectedYieldQuintals: '', seedCost: '', fertilizerCost: '', pesticideCost: '', laborCost: '', irrigationCost: '', otherCost: '' });
   const [marketData, setMarketData] = useState(DEFAULT_MARKET_DATA);
+  const [marketSource, setMarketSource] = useState('database fallback');
 
   useEffect(() => {
-    Promise.all([api.get('/crops'), api.get('/farms'), api.get('/expenses'), api.get('/market/prices')])
-      .then(([cropData, farmData, expenseData, priceData]) => {
+    Promise.allSettled([api.get('/crops'), api.get('/farms'), api.get('/expenses'), api.get('/financial-inputs'), api.get('/market/prices')])
+      .then(results => {
+        const value = index => results[index].status === 'fulfilled' ? results[index].value : null;
+        const cropData = value(0);
+        const farmData = value(1);
+        const expenseData = value(2);
+        const inputData = value(3);
+        const priceResponse = value(4);
         setCrops(Array.isArray(cropData) ? cropData : []);
         setFarms(Array.isArray(farmData) ? farmData : []);
         setExpenses(Array.isArray(expenseData) ? expenseData : []);
+        setFinancialInputs(Array.isArray(inputData) ? inputData : []);
+        setMarketSource(priceResponse?.source === 'data.gov.in' ? 'live data.gov.in' : 'database fallback');
+        const priceData = Array.isArray(priceResponse) ? priceResponse : priceResponse?.records;
         if (Array.isArray(priceData) && priceData.length) {
-          setMarketData({ ...DEFAULT_MARKET_DATA, ...Object.fromEntries(priceData.map(item => [item.crop_key, { price: Number(item.price_per_quintal), yield: Number(item.yield_per_acre) }])) });
+          const livePrices = priceResponse?.source === 'data.gov.in'
+            ? Object.fromEntries(priceData.map(item => [cropKey(item.commodity || item.Commodity), { price: Number(item.modal_price || item.Modal_Price || item.max_price || item.Max_Price), yield: DEFAULT_MARKET_DATA[cropKey(item.commodity || item.Commodity)]?.yield || 20 }]).filter(([, value]) => Number.isFinite(value.price) && value.price > 0))
+            : Object.fromEntries(priceData.map(item => [item.crop_key, { price: Number(item.price_per_quintal), yield: Number(item.yield_per_acre) }]));
+          setMarketData({ ...DEFAULT_MARKET_DATA, ...livePrices });
         }
       })
       .catch(() => {
@@ -36,17 +52,26 @@ export const ProfitabilityIntelligence = () => {
     const key = cropKey(crop.crop_name || crop.cropName);
     const market = marketData[key] || DEFAULT_MARKET_DATA.wheat;
     const farm = farms.find(item => String(item.id) === String(crop.farm_id || crop.farmId));
-    const acres = Number(crop.acreage || crop.area_acres || farm?.size_acres || 1);
+    const savedInput = financialInputs.find(item => String(item.crop_id) === String(crop.id));
+    const acres = Number(savedInput?.area_acres || crop.acreage || crop.area_acres || farm?.size_acres || 1);
     const linkedExpenses = expenses.filter(expense => String(expense.farm_id || '') === String(crop.farm_id || crop.farmId || ''));
     const recordedCost = linkedExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+    const enteredCost = savedInput ? ['seed_cost', 'fertilizer_cost', 'pesticide_cost', 'labor_cost', 'irrigation_cost', 'other_cost'].reduce((sum, key) => sum + Number(savedInput[key] || 0), 0) : 0;
     const estimatedCost = acres * 18000;
-    const cost = recordedCost || estimatedCost;
-    const revenue = acres * market.yield * market.price;
+    const cost = recordedCost || enteredCost || estimatedCost;
+    const yieldQuintals = Number(savedInput?.expected_yield_quintals || acres * market.yield);
+    const revenue = yieldQuintals * market.price;
     return { id: crop.id, name: crop.crop_name || crop.cropName || 'Crop', acres, cost, revenue, profit: revenue - cost, price: market.price, yield: market.yield, usesRecordedCost: recordedCost > 0 };
-  }), [crops, farms, expenses, marketData]);
+  }), [crops, farms, expenses, financialInputs, marketData]);
 
   const totals = analysis.reduce((result, item) => ({ cost: result.cost + item.cost, revenue: result.revenue + item.revenue, profit: result.profit + item.profit }), { cost: 0, revenue: 0, profit: 0 });
   const money = value => `₹${Math.round(value).toLocaleString('en-IN')}`;
+  const saveInputs = async event => {
+    event.preventDefault();
+    if (!selectedCropId) return;
+    const saved = await api.put(`/financial-inputs/${selectedCropId}`, inputForm);
+    setFinancialInputs(previous => [...previous.filter(item => String(item.crop_id) !== String(selectedCropId)), saved]);
+  };
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -73,7 +98,18 @@ export const ProfitabilityIntelligence = () => {
         )}
       </div>
 
-      <div className="card" style={{ background: 'var(--light-green)' }}><div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}><TrendingUp size={20} color="var(--primary)" /><strong>How these estimates work</strong></div><p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Recorded expenses are used when available. Otherwise, CropNova uses an estimated per-acre input cost and reference market prices. Replace estimates with your actual expenses for a more accurate result.</p></div>
+      <div className="card">
+        <h3>Enter Your Crop Costs</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Use your own numbers for a more accurate profit estimate.</p>
+        <form onSubmit={saveInputs} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <select className="input-field" value={selectedCropId} onChange={event => setSelectedCropId(event.target.value)} required><option value="">Select crop</option>{crops.map(crop => <option key={crop.id} value={crop.id}>{crop.crop_name || crop.cropName}</option>)}</select>
+          <div className="grid-3">{[['areaAcres','Area (acres)'],['expectedYieldQuintals','Expected yield (quintals)'],['seedCost','Seed cost']].map(([key,label]) => <input key={key} className="input-field" type="number" min="0" placeholder={label} value={inputForm[key]} onChange={event => setInputForm({ ...inputForm, [key]: event.target.value })} />)}</div>
+          <div className="grid-3">{[['fertilizerCost','Fertilizer cost'],['pesticideCost','Pesticide cost'],['laborCost','Labor cost'],['irrigationCost','Irrigation cost'],['otherCost','Other cost']].map(([key,label]) => <input key={key} className="input-field" type="number" min="0" placeholder={label} value={inputForm[key]} onChange={event => setInputForm({ ...inputForm, [key]: event.target.value })} />)}</div>
+          <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}><Wallet size={16} /> Save crop inputs</button>
+        </form>
+      </div>
+
+      <div className="card" style={{ background: 'var(--light-green)' }}><div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}><TrendingUp size={20} color="var(--primary)" /><strong>Market source: {marketSource}</strong></div><p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Recorded expenses are used when available. Otherwise, CropNova uses an estimated per-acre input cost. Live mandi prices require valid data.gov.in environment variables.</p></div>
     </div>
   );
 };
