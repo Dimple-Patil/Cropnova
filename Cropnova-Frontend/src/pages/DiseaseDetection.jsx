@@ -13,7 +13,19 @@ export const DiseaseDetection = () => {
     if (file) {
       setImage(URL.createObjectURL(file));
       const reader = new FileReader();
-      reader.onload = () => setImageData(reader.result);
+      reader.onload = () => {
+        const source = new Image();
+        source.onload = () => {
+          const maxSize = 1200;
+          const scale = Math.min(1, maxSize / Math.max(source.width, source.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(source.width * scale));
+          canvas.height = Math.max(1, Math.round(source.height * scale));
+          canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+          setImageData(canvas.toDataURL('image/jpeg', 0.76));
+        };
+        source.src = reader.result;
+      };
       reader.readAsDataURL(file);
       setResult(null);
     }
@@ -37,7 +49,7 @@ export const DiseaseDetection = () => {
           {image ? (
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <img src={image} alt="Crop sample" style={{ maxHeight: '220px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />
-              <button onClick={handleScan} className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={scanning}>
+              <button onClick={handleScan} className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={scanning || !imageData}>
                 <Bug size={18} /> {scanning ? 'Running Neural Diagnostic...' : 'Start AI Analysis'}
               </button>
             </div>

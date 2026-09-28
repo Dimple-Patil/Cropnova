@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'cropnova_super_secret_key_2026';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Middleware for auth
 const auth = (req, res, next) => {
