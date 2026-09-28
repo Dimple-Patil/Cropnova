@@ -196,7 +196,7 @@ export const Navbar = () => {
           </button>
 
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} title="Choose language">
-            <Languages size={16} style={{ position: 'absolute', left: '0.6rem', pointerEvents: 'none', color: 'var(--primary)' }} />
+            <Languages size={14} style={{ position: 'absolute', left: '0.42rem', pointerEvents: 'none', color: 'var(--primary)' }} />
             <select
               aria-label="Choose language"
               value={language}
@@ -204,7 +204,7 @@ export const Navbar = () => {
               className="language-selector"
             >
               <option value="en">EN</option>
-              <option value="mr">मराठी</option>
+              <option value="mr">MR</option>
             </select>
           </div>
 

@@ -59,8 +59,9 @@ body {
 /* Custom language control for the Google Website Translator. */
 .language-selector {
   appearance: none;
-  min-width: 82px;
-  padding: 0.42rem 1.65rem 0.42rem 2rem;
+  width: 58px;
+  min-width: 58px;
+  padding: 0.42rem 0.2rem 0.42rem 1.3rem;
   border: 1px solid var(--glass-border);
   border-radius: 50px;
   background: var(--card-bg);
